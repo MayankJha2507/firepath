@@ -104,3 +104,11 @@ create trigger on_auth_user_created
 create index if not exists idx_snapshots_user_date on portfolio_snapshots(user_id, snapshot_date desc);
 create index if not exists idx_holdings_snapshot on holdings(snapshot_id);
 create index if not exists idx_analyses_user_date on ai_analyses(user_id, generated_at desc);
+
+-- Grant table access to authenticated users (required alongside RLS policies)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on profiles to authenticated;
+grant select, insert, update, delete on portfolio_snapshots to authenticated;
+grant select, insert, update, delete on holdings to authenticated;
+grant select, insert, update, delete on ai_analyses to authenticated;
+grant select, insert, update, delete on milestones to authenticated;

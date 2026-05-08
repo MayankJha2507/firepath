@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-// TODO: remove BYPASS_AUTH before production launch
-if (process.env.BYPASS_AUTH === "true") redirect("/dashboard");
-
 const features = [
   {
     icon: "📊",
@@ -93,6 +90,9 @@ const tiers = [
 ];
 
 export default function Landing() {
+  // TODO: remove BYPASS_AUTH before production launch
+  if (process.env.BYPASS_AUTH === "true") redirect("/dashboard");
+
   return (
     <div className="bg-white min-h-screen">
       {/* Nav */}
