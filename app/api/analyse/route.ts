@@ -43,7 +43,9 @@ export async function POST(_req: Request) {
 
   const { data: profile } = await supabase
     .from("profiles").select("tier").eq("id", user.id).single();
-  if (profile?.tier !== "pro") {
+  // TODO: remove BYPASS_PRO_GATE before production launch
+  const bypassProGate = process.env.BYPASS_PRO_GATE === "true";
+  if (profile?.tier !== "pro" && !bypassProGate) {
     return NextResponse.json({ error: "Pro tier required" }, { status: 403 });
   }
 
