@@ -14,7 +14,7 @@ export default async function Settings() {
   return (
     <div className="min-h-screen bg-surface">
       <SideNav />
-      <main className="lg:ml-[240px] pt-14 lg:pt-0">
+      <main className="lg:ml-[220px] pt-14 lg:pt-0">
         <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
           <h1 className="text-2xl font-bold text-ink mb-6">Settings</h1>
 

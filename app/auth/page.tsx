@@ -67,6 +67,16 @@ export default function AuthPage() {
           </p>
         </div>
 
+        {/* TODO: remove BYPASS_AUTH before production launch */}
+        {process.env.NEXT_PUBLIC_BYPASS_AUTH === "true" && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+            <p className="text-xs text-amber-700 font-medium mb-2">Dev mode — auth bypass active</p>
+            <Link href="/dashboard" className="btn-primary w-full text-sm">
+              Enter without logging in →
+            </Link>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           {/* Mode tabs */}
           <div className="flex bg-surface rounded-xl p-1 mb-5">

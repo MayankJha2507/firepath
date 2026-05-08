@@ -71,7 +71,7 @@ export default async function Dashboard() {
     return (
       <div className="min-h-screen bg-surface">
         <SideNav />
-        <main className="lg:ml-[240px] pt-14 lg:pt-0 min-h-screen flex items-center justify-center px-6">
+        <main className="lg:ml-[220px] pt-14 lg:pt-0 min-h-screen flex items-center justify-center px-6">
           <div className="card max-w-md w-full text-center py-12">
             <div className="text-4xl mb-4">📊</div>
             <h2 className="text-xl font-semibold text-ink mb-2">Portfolio not set up yet</h2>
@@ -115,7 +115,7 @@ export default async function Dashboard() {
     <div className="min-h-screen bg-surface">
       <SideNav />
 
-      <main className="lg:ml-[240px] pt-14 lg:pt-0">
+      <main className="lg:ml-[220px] pt-14 lg:pt-0">
         <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
           {/* Greeting */}
           <div className="flex items-end justify-between">
