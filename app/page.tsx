@@ -1,4 +1,8 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
+
+// TODO: remove BYPASS_AUTH before production launch
+if (process.env.BYPASS_AUTH === "true") redirect("/dashboard");
 
 const features = [
   {
