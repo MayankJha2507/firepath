@@ -48,25 +48,26 @@ export default function AnalysisClient() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [cached, setCached]   = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
   async function fetchAnalysis(force = false) {
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setQuotaExceeded(false);
     try {
       const res = await fetch("/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || res.statusText);
-      }
       const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Analysis failed. Please try again.");
+      }
       setAnalysis(json.analysis);
-      setCached(json.cached);
+      setCached(json.cached ?? false);
+      setQuotaExceeded(json.quota_exceeded ?? false);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,6 +105,15 @@ export default function AnalysisClient() {
 
   return (
     <div className="space-y-4">
+      {quotaExceeded && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <span className="text-amber-500 flex-shrink-0">⚠️</span>
+          <p className="text-sm text-amber-800">
+            <strong>Gemini quota exceeded</strong> — showing a sample analysis.
+            Add a paid Gemini API key in your environment to enable live analysis.
+          </p>
+        </div>
+      )}
       {/* Header — score + headline */}
       <div className="card flex items-center gap-6">
         <div className={`w-20 h-20 rounded-full ring-4 ${sc.ring} ${sc.bg} flex flex-col items-center justify-center flex-shrink-0`}>
