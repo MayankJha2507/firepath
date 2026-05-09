@@ -13,6 +13,12 @@ interface Props {
   additionalSipNeeded: number;
 }
 
+const STATE_VARS = {
+  on_track:   { bg: "var(--banner-success-bg)", border: "var(--banner-success-border)", text: "var(--banner-success-text)" },
+  close:      { bg: "var(--banner-close-bg)",   border: "var(--banner-close-border)",   text: "var(--banner-close-text)"   },
+  needs_work: { bg: "var(--banner-danger-bg)",   border: "var(--banner-danger-border)",  text: "var(--banner-danger-text)"  },
+};
+
 export default function FireStatusBanner({
   state, projectedFireAge, targetFireAge, diffYears, additionalSipNeeded,
 }: Props) {
@@ -45,68 +51,47 @@ export default function FireStatusBanner({
   if (dismissed) return null;
 
   const yearsEarly = Math.abs(Math.round(diffYears));
-  const earlyOrLate = diffYears > 0 ? "early" : "behind";
+  const { bg, border, text } = STATE_VARS[state];
 
-  const config = {
-    on_track: {
-      icon: "🔥",
-      title: `You're on track to retire at ${projectedFireAge} — ${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} early`,
-      body: "Keep your current SIP pace and you'll get there.",
-      bg: "linear-gradient(135deg, rgba(74,222,128,0.12) 0%, rgba(22,163,74,0.06) 100%)",
-      border: "#4ADE80",
-      text: "#166534",
-    },
-    close: {
-      icon: "⚡",
-      title: `You're close — projected retirement at ${projectedFireAge}`,
-      body: `${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} behind target. ${
-        additionalSipNeeded > 0
-          ? `A SIP increase of ${formatINR(Math.ceil(additionalSipNeeded / 1000) * 1000)}/month closes the gap.`
-          : "Small SIP increase will close the gap."
-      }`,
-      bg: "linear-gradient(135deg, rgba(253,212,77,0.12) 0%, rgba(217,119,6,0.06) 100%)",
-      border: "#FCD34D",
-      text: "#92400e",
-    },
-    needs_work: {
-      icon: "📈",
-      title: `Projected retirement at ${projectedFireAge} — ${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} ${earlyOrLate}`,
-      body: `Your top lever: increase monthly SIP by ${
-        additionalSipNeeded > 0
-          ? formatINR(Math.ceil(additionalSipNeeded / 1000) * 1000)
-          : "₹15,000"
-      } to close the gap significantly.`,
-      bg: "linear-gradient(135deg, rgba(248,113,113,0.10) 0%, rgba(220,38,38,0.05) 100%)",
-      border: "#F87171",
-      text: "#991b1b",
-    },
-  }[state];
+  const icons = { on_track: "🔥", close: "⚡", needs_work: "📈" };
+  const titles = {
+    on_track: `You're on track to retire at ${projectedFireAge} — ${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} early`,
+    close: `You're close — projected retirement at ${projectedFireAge}`,
+    needs_work: `Projected retirement at ${projectedFireAge} — ${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} behind`,
+  };
+  const bodies = {
+    on_track: "Keep your current SIP pace and you'll get there.",
+    close: `${yearsEarly} year${yearsEarly !== 1 ? "s" : ""} behind target. ${
+      additionalSipNeeded > 0
+        ? `A SIP increase of ${formatINR(Math.ceil(additionalSipNeeded / 1000) * 1000)}/month closes the gap.`
+        : "A small SIP increase will close the gap."
+    }`,
+    needs_work: `Your top lever: increase monthly SIP by ${
+      additionalSipNeeded > 0 ? formatINR(Math.ceil(additionalSipNeeded / 1000) * 1000) : "₹15,000"
+    } to close the gap significantly.`,
+  };
 
   return (
     <div
       className="relative rounded-xl px-4 py-3.5"
-      style={{ background: config.bg, border: `1px solid ${config.border}` }}
+      style={{ background: bg, border: `1px solid ${border}` }}
     >
       <button
         onClick={() => {
           setDismissed(true);
           sessionStorage.setItem("firepath-banner-dismissed", "true");
         }}
-        className="absolute top-2.5 right-3 text-sm opacity-50 hover:opacity-100 transition-opacity"
-        style={{ color: config.text }}
+        className="absolute top-2.5 right-3 text-sm font-bold opacity-60 hover:opacity-100 transition-opacity leading-none"
+        style={{ color: text }}
         aria-label="Dismiss"
       >
         ✕
       </button>
       <div className="flex items-start gap-3 pr-6">
-        <span className="text-xl flex-shrink-0 mt-0.5">{config.icon}</span>
+        <span className="text-xl flex-shrink-0 mt-0.5">{icons[state]}</span>
         <div>
-          <div className="font-semibold text-sm" style={{ color: config.text }}>
-            {config.title}
-          </div>
-          <div className="text-xs mt-0.5" style={{ color: config.text, opacity: 0.85 }}>
-            {config.body}
-          </div>
+          <div className="font-semibold text-sm" style={{ color: text }}>{titles[state]}</div>
+          <div className="text-xs mt-0.5 leading-relaxed" style={{ color: text, opacity: 0.9 }}>{bodies[state]}</div>
         </div>
       </div>
     </div>

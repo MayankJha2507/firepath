@@ -20,6 +20,16 @@
   --warning:      #D97706;
   --danger:       #DC2626;
   --card-shadow:  0 1px 3px rgba(0,0,0,0.08);
+  /* Banner text colors (semantic, change per mode) */
+  --banner-success-bg:   rgba(74,222,128,0.12);
+  --banner-success-border: #4ADE80;
+  --banner-success-text: #166534;
+  --banner-close-bg:    rgba(251,191,36,0.12);
+  --banner-close-border: #FBBF24;
+  --banner-close-text:  #78350f;
+  --banner-danger-bg:   rgba(239,68,68,0.10);
+  --banner-danger-border: #F87171;
+  --banner-danger-text: #991b1b;
 }
 
 .dark {
@@ -38,6 +48,16 @@
   --warning:      #FCD34D;
   --danger:       #F87171;
   --card-shadow:  none;
+  /* Banner text — light on dark so they read well */
+  --banner-success-bg:   rgba(74,222,128,0.15);
+  --banner-success-border: rgba(74,222,128,0.4);
+  --banner-success-text: #bbf7d0;
+  --banner-close-bg:    rgba(251,191,36,0.15);
+  --banner-close-border: rgba(251,191,36,0.4);
+  --banner-close-text:  #fde68a;
+  --banner-danger-bg:   rgba(239,68,68,0.18);
+  --banner-danger-border: rgba(239,68,68,0.4);
+  --banner-danger-text: #fecaca;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */

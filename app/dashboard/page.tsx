@@ -86,7 +86,7 @@ export default async function Dashboard() {
     return (
       <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <SideNav />
-        <main className="lg:ml-[220px] pt-14 lg:pt-0 min-h-screen flex items-center justify-center px-6">
+        <main className="lg:ml-[220px] pt-14 min-h-screen flex items-center justify-center px-6">
           <div className="card max-w-md w-full text-center py-12">
             <div className="text-4xl mb-4">📊</div>
             <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Portfolio not set up yet</h2>
@@ -156,7 +156,7 @@ export default async function Dashboard() {
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
 
-      <main className="lg:ml-[220px] pt-14 lg:pt-0">
+      <main className="lg:ml-[220px] pt-14">
         <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
           {/* Greeting */}
           <div className="flex items-end justify-between">
@@ -272,20 +272,17 @@ export default async function Dashboard() {
               <div className="section-title mb-4">Improve your accuracy</div>
               <div className="space-y-3">
                 {missingNudges.map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                  <div key={item.key} className="flex items-center justify-between py-2 last:border-0" style={{ borderBottom: "1px solid var(--border)" }}>
                     <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0" />
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--text-secondary)", opacity: 0.4 }} />
                       <div>
-                        <div className="text-sm font-medium text-ink capitalize">
+                        <div className="text-sm font-medium capitalize" style={{ color: "var(--text-primary)" }}>
                           {item.label} not added
                         </div>
-                        <div className="text-xs text-slate-400">{item.desc}</div>
+                        <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.desc}</div>
                       </div>
                     </div>
-                    <Link
-                      href={item.href}
-                      className="text-xs text-orange-500 font-medium hover:underline whitespace-nowrap ml-4"
-                    >
+                    <Link href={item.href} className="text-xs font-medium hover:underline whitespace-nowrap ml-4" style={{ color: "var(--orange)" }}>
                       Add →
                     </Link>
                   </div>
@@ -295,9 +292,9 @@ export default async function Dashboard() {
           )}
 
           {allComplete && (
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-              <span className="text-emerald-500">✓</span>
-              <p className="text-sm text-emerald-800 font-medium">
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)" }}>
+              <span style={{ color: "var(--success)" }}>✓</span>
+              <p className="text-sm font-medium" style={{ color: "var(--success)" }}>
                 Portfolio complete — all projections are based on your exact data.
               </p>
             </div>
@@ -330,21 +327,23 @@ function MetricCard({ label, value, sub, accent, fireDiff, quality }: {
   label: string; value: string; sub?: string; accent: string;
   fireDiff?: number | null; quality?: DataQuality;
 }) {
-  const border: Record<string, string> = {
-    orange: "border-t-orange-400", blue: "border-t-blue-400",
-    violet: "border-t-violet-400", green: "border-t-emerald-400",
+  const borderColor: Record<string, string> = {
+    orange: "#fb923c", blue: "#60a5fa",
+    violet: "#a78bfa", green: "#34d399",
   };
-  const fireDiffColor = fireDiff == null ? "" : fireDiff >= 0 ? "text-emerald-600" : "text-red-500";
+  const subColor = fireDiff == null
+    ? "var(--text-secondary)"
+    : fireDiff >= 0 ? "var(--success)" : "var(--danger)";
   return (
-    <div className={`card border-t-2 ${border[accent] || ""}`}>
-      <div className="text-xs font-medium text-slate-500 mb-2">{label}</div>
-      <div className="text-2xl font-bold text-ink tracking-tight">{value}</div>
+    <div className="card border-t-2" style={{ borderTopColor: borderColor[accent] || "#fb923c" }}>
+      <div className="text-xs font-medium mb-2" style={{ color: "var(--text-secondary)" }}>{label}</div>
+      <div className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>{value}</div>
       {quality && (
         <div className="mt-1.5">
           <DataQualityBadge quality={quality} linkTo="/portfolio" />
         </div>
       )}
-      {sub && <div className={`text-xs mt-1 ${fireDiff != null ? fireDiffColor : "text-slate-400"}`}>{sub}</div>}
+      {sub && <div className="text-xs mt-1" style={{ color: subColor }}>{sub}</div>}
     </div>
   );
 }
@@ -353,9 +352,17 @@ function MilestoneCard({ label, months, estimated }: { label: string; months: nu
   const achieved = months === 0;
   const unreachable = !isFinite(months);
   return (
-    <div className={`rounded-xl p-3 text-center border ${achieved ? "bg-emerald-50 border-emerald-200" : "bg-surface border-slate-100"}`}>
-      <div className={`font-semibold text-sm ${achieved ? "text-emerald-700" : "text-ink"}`}>{label}</div>
-      <div className={`text-xs mt-1 flex items-center justify-center gap-1 ${achieved ? "text-emerald-600" : "text-slate-400"}`}>
+    <div
+      className="rounded-xl p-3 text-center"
+      style={{
+        border: "1px solid var(--border)",
+        background: achieved ? "rgba(74,222,128,0.08)" : "var(--bg-secondary)",
+      }}
+    >
+      <div className="font-semibold text-sm" style={{ color: achieved ? "var(--success)" : "var(--text-primary)" }}>
+        {label}
+      </div>
+      <div className="text-xs mt-1 flex items-center justify-center gap-1" style={{ color: achieved ? "var(--success)" : "var(--text-secondary)" }}>
         {achieved ? "✓ Achieved"
           : unreachable ? "Increase SIPs"
           : months < 12 ? `${months}mo`
@@ -370,13 +377,13 @@ function MilestoneCard({ label, months, estimated }: { label: string; months: nu
 
 function SavingsGauge({ pct }: { pct: number }) {
   const c = Math.min(100, Math.max(0, pct));
-  const color = c >= 50 ? "text-emerald-600" : c >= 30 ? "text-amber-500" : "text-red-500";
+  const colorVal = c >= 50 ? "var(--success)" : c >= 30 ? "var(--warning)" : "var(--danger)";
   const label = c >= 50 ? "Excellent 🔥" : c >= 30 ? "Good — push higher" : "Needs work";
   return (
     <div>
-      <div className={`text-4xl font-bold ${color}`}>{c.toFixed(0)}%</div>
-      <div className="text-xs text-slate-400 mt-1">of income invested</div>
-      <div className={`mt-2 text-xs font-medium ${color}`}>{label}</div>
+      <div className="text-4xl font-bold" style={{ color: colorVal }}>{c.toFixed(0)}%</div>
+      <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>of income invested</div>
+      <div className="mt-2 text-xs font-medium" style={{ color: colorVal }}>{label}</div>
     </div>
   );
 }
@@ -387,19 +394,19 @@ function AIPreviewCard({ isPro }: { isPro: boolean }) {
       <div className="flex items-center justify-between mb-3">
         <div className="section-title">AI portfolio analysis</div>
         {isPro && (
-          <Link href="/analysis" className="text-xs text-brand-500 font-medium hover:underline">
+          <Link href="/analysis" className="text-xs font-medium hover:underline" style={{ color: "var(--orange)" }}>
             View full analysis →
           </Link>
         )}
       </div>
       {isPro ? (
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-2xl flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
             🤖
           </div>
           <div>
-            <div className="font-semibold text-ink">Your analysis is ready</div>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <div className="font-semibold" style={{ color: "var(--text-primary)" }}>Your analysis is ready</div>
+            <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
               Get your health score, action items, and FIRE feasibility verdict.
             </p>
           </div>
@@ -407,14 +414,14 @@ function AIPreviewCard({ isPro }: { isPro: boolean }) {
       ) : (
         <>
           <div className="blur-sm pointer-events-none select-none space-y-2 mb-4">
-            <div className="h-4 bg-slate-100 rounded w-3/4" />
-            <div className="h-4 bg-slate-100 rounded w-1/2" />
-            <div className="h-4 bg-slate-100 rounded w-2/3" />
+            <div className="h-4 rounded w-3/4" style={{ background: "var(--border)" }} />
+            <div className="h-4 rounded w-1/2" style={{ background: "var(--border)" }} />
+            <div className="h-4 rounded w-2/3" style={{ background: "var(--border)" }} />
           </div>
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
+          <div className="absolute inset-0 flex items-center justify-center backdrop-blur-sm rounded-2xl" style={{ background: "rgba(var(--bg-card-rgb, 255,255,255), 0.85)" }}>
             <div className="text-center px-4">
-              <div className="font-semibold text-ink mb-1">Pro feature</div>
-              <p className="text-sm text-slate-500 mb-3">AI health score, action items, and FIRE feasibility.</p>
+              <div className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Pro feature</div>
+              <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>AI health score, action items, and FIRE feasibility.</p>
               <button className="btn-primary text-sm px-5">Upgrade to Pro — ₹499/mo</button>
             </div>
           </div>

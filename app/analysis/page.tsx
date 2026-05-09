@@ -22,7 +22,7 @@ export default async function Analysis() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
-      <main className="lg:ml-[220px] pt-14 lg:pt-0">
+      <main className="lg:ml-[220px] pt-14">
         <div className="max-w-3xl mx-auto px-6 py-8">
           <h1 className="text-2xl font-semibold mb-6" style={{ color: "var(--text-primary)" }}>AI Analysis</h1>
 
