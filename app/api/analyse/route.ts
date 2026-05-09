@@ -131,7 +131,21 @@ export async function POST(_req: Request) {
     const raw = await aiProvider.generateAnalysis(summary, SYSTEM_PROMPT);
     parsed = JSON.parse(raw);
   } catch (e: any) {
-    return NextResponse.json({ error: `AI parse failed: ${e.message}` }, { status: 500 });
+    const msg: string = e.message || "";
+    // Rate limit or quota exceeded — return mock so the page doesn't hard-fail
+    if (msg.includes("429") || msg.includes("quota") || msg.includes("rate") || msg.includes("Too Many")) {
+      const fallback = {
+        ...MOCK_ANALYSIS,
+        headline: "Gemini API quota exceeded — showing a sample analysis. Add a paid Gemini API key to enable live analysis.",
+        disclaimer: "Live AI analysis unavailable: free Gemini tier quota exhausted. " + MOCK_ANALYSIS.disclaimer,
+      };
+      return NextResponse.json({ analysis: fallback, cached: false, quota_exceeded: true });
+    }
+    // Other AI errors (bad JSON, network) — return clean message
+    return NextResponse.json(
+      { error: "AI analysis failed. Please try again in a few minutes." },
+      { status: 500 }
+    );
   }
 
   await supabase.from("ai_analyses").insert({
