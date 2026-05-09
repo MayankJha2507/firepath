@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatINR, epfProjection, npsProjection, ppfProjection } from "@/lib/fire-calculator";
 import SubNav from "@/components/layout/SubNav";
+import { parseHoldings } from "@/lib/portfolio-parser";
+import { parsePortfolioFile, extractHoldingsFromFile } from "@/lib/csv-parser";
+import type { ParsedHolding } from "@/lib/portfolio-parser";
+import type { ParsedFile } from "@/lib/csv-parser";
 import type { Holding, HoldingCategory } from "@/lib/types";
 
 // ─── types ──────────────────────────────────────────────────────────────
@@ -31,6 +35,7 @@ interface Profile {
   tax_regime: string;
   fire_monthly_expense: number | null;
   risk_score: number | null;
+  data_completeness: Record<string, string> | null;
 }
 
 interface StockRow { name: string; value: string }
@@ -56,6 +61,8 @@ interface EditState {
   usMonthly: string;
   indianMonthly: string;
 }
+
+type InputMode = "manual" | "paste" | "csv";
 
 // ─── constants ──────────────────────────────────────────────────────────
 
@@ -138,9 +145,9 @@ function buildInitialEditState(profile: Profile, holdings: DBHolding[]): EditSta
       years:   parseNotes(ppfH?.notes, "years_to_maturity") || "15",
     },
     lic: {
-      value:        String(licH?.value_inr || "0"),
+      value:         String(licH?.value_inr || "0"),
       annualPremium: String(Math.round((licH?.monthly_contribution || 0) * 12)),
-      licType:      parseNotes(licH?.notes, "type") || "term",
+      licType:       parseNotes(licH?.notes, "type") || "term",
     },
     sips: sips.map(h => ({
       name:    h.name.replace(/^SIP: /, ""),
@@ -149,6 +156,25 @@ function buildInitialEditState(profile: Profile, holdings: DBHolding[]): EditSta
     })),
     usMonthly:     String(usMonthlyH?.monthly_contribution || "0"),
     indianMonthly: String(indianMonthlyH?.monthly_contribution || "0"),
+  };
+}
+
+function computeDataCompleteness(state: EditState): Record<string, string> {
+  return {
+    income:        n(state.profile.monthly_income) > 0 ? "exact" : "estimated",
+    expenses:      n(state.profile.monthly_expense) > 0 ? "exact" : "estimated",
+    savings:       state.indianStocks.some(s => s.name && n(s.value) > 0) ||
+                   state.usStocks.some(s => s.name && n(s.value) > 0) ||
+                   state.mutualFunds.some(s => s.name && n(s.value) > 0)
+                   ? "exact" : "estimated",
+    indian_stocks: state.indianStocks.some(s => s.name && n(s.value) > 0) ? "exact" : "missing",
+    us_stocks:     state.usStocks.some(s => s.name && n(s.value) > 0) ? "exact" : "missing",
+    mutual_funds:  state.mutualFunds.some(s => s.name && n(s.value) > 0) ? "exact" : "missing",
+    gold:          n(state.physicalGold) > 0 || n(state.goldEtf) > 0 ? "exact" : "missing",
+    epf:           n(state.epf.value) > 0 ? "exact" : "estimated",
+    nps:           n(state.nps.value) > 0 ? "exact" : "missing",
+    ppf:           n(state.ppf.value) > 0 ? "exact" : "missing",
+    sips:          state.sips.some(s => s.name && n(s.monthly) > 0) ? "exact" : "missing",
   };
 }
 
@@ -265,6 +291,533 @@ function RowEditor({ left, middle, right, onDelete }: {
   );
 }
 
+// ─── input mode tab bar ────────────────────────────────────────────────────
+
+function InputModeTabs({ mode, onChange }: { mode: InputMode; onChange: (m: InputMode) => void }) {
+  const tabs: { id: InputMode; icon: string; label: string }[] = [
+    { id: "manual", icon: "✏️", label: "Manual" },
+    { id: "paste",  icon: "📋", label: "Paste" },
+    { id: "csv",    icon: "📁", label: "Upload CSV" },
+  ];
+  return (
+    <div className="flex gap-1 mb-4">
+      {tabs.map(t => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onChange(t.id)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+            mode === t.id
+              ? "bg-orange-50 border-orange-200 text-orange-600"
+              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+          }`}
+        >
+          {t.icon} {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── paste entry ──────────────────────────────────────────────────────────
+
+function PasteEntry({
+  label,
+  onConfirm,
+  onCancel,
+  isSip,
+}: {
+  label: string;
+  onConfirm: (rows: { name: string; value: string }[]) => void;
+  onCancel: () => void;
+  isSip?: boolean;
+}) {
+  const [text, setText] = useState("");
+  const [parsed, setParsed] = useState<ParsedHolding[] | null>(null);
+  const [editing, setEditing] = useState<{ name: string; value: string }[]>([]);
+
+  function doParse() {
+    const results = parseHoldings(text);
+    setParsed(results);
+    setEditing(results.map(r => ({ name: r.name, value: String(Math.round(r.value)) })));
+  }
+
+  if (parsed) {
+    return (
+      <div>
+        <div className="text-xs font-medium text-slate-600 mb-3">
+          {parsed.length} {label.toLowerCase()} detected — review before saving
+        </div>
+        <div className="space-y-2 mb-4">
+          {editing.map((row, i) => (
+            <div key={i} className="grid grid-cols-[24px_1fr_140px_28px] gap-2 items-center">
+              <span className={`text-xs ${parsed[i]?.confidence === "high" ? "text-emerald-500" : "text-amber-500"}`}>
+                {parsed[i]?.confidence === "high" ? "✓" : "⚠"}
+              </span>
+              <input
+                className="input text-sm"
+                value={row.name}
+                onChange={e => setEditing(ed => ed.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+              />
+              <input
+                type="number" className="input text-sm"
+                value={row.value}
+                onChange={e => setEditing(ed => ed.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
+              />
+              <button
+                type="button"
+                onClick={() => { setEditing(ed => ed.filter((_, j) => j !== i)); setParsed(p => p?.filter((_, j) => j !== i) ?? null); }}
+                className="p-1 text-slate-300 hover:text-red-400 rounded"
+              >×</button>
+            </div>
+          ))}
+        </div>
+        {parsed.some(p => p.confidence === "low") && (
+          <p className="text-xs text-amber-600 mb-3">⚠ Low confidence rows — please verify values</p>
+        )}
+        <div className="flex gap-2">
+          <button type="button" onClick={() => { setParsed(null); setText(""); }} className="btn-secondary text-sm">
+            ← Edit paste
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(editing.filter(r => r.name && parseFloat(r.value) > 0))}
+            className="btn-primary text-sm"
+          >
+            Save these {label.toLowerCase()} →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-slate-500 mb-2">
+        Paste from Excel, Google Sheets, or WhatsApp — one per line.
+        {isSip ? " Format: Fund name then monthly amount." : " Format: Name then current value."}
+        {" "}Commas, tabs, or spaces all work. Supports ₹85k, 1.5L, 1Cr shorthand.
+      </p>
+      <textarea
+        className="input w-full font-mono text-sm"
+        rows={6}
+        placeholder={isSip
+          ? "Nifty 50 Index SIP 15000\nParag Parikh Flexi Cap, 10000"
+          : "HDFC Bank 85000\nBajaj Finance, 92000\nCDSL\t78000"}
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      <div className="flex gap-2 mt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary text-sm">Cancel</button>
+        <button type="button" onClick={doParse} disabled={!text.trim()} className="btn-primary text-sm disabled:opacity-50">
+          Parse →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── CSV entry ────────────────────────────────────────────────────────────
+
+function CsvEntry({
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  label: string;
+  onConfirm: (rows: { name: string; value: string }[]) => void;
+  onCancel: () => void;
+}) {
+  const [parsed, setParsed] = useState<ParsedFile | null>(null);
+  const [nameCol, setNameCol] = useState("");
+  const [valueCol, setValueCol] = useState("");
+  const [preview, setPreview] = useState<{ name: string; value: string }[] | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    setLoading(true);
+    setErr(null);
+    try {
+      const result = await parsePortfolioFile(file);
+      setParsed(result);
+      setNameCol(result.suggestedNameCol || result.headers[0] || "");
+      setValueCol(result.suggestedValueCol || result.headers[1] || "");
+    } catch (e: any) {
+      setErr("Failed to read file. Make sure it's a valid .csv or .xlsx.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function buildPreview() {
+    if (!parsed || !nameCol || !valueCol) return;
+    const rows = extractHoldingsFromFile(parsed, nameCol, valueCol)
+      .slice(0, 3)
+      .map(r => ({ name: r.name, value: String(Math.round(r.value)) }));
+    setPreview(rows);
+  }
+
+  function confirmImport() {
+    if (!parsed || !nameCol || !valueCol) return;
+    const rows = extractHoldingsFromFile(parsed, nameCol, valueCol)
+      .map(r => ({ name: r.name, value: String(Math.round(r.value)) }));
+    onConfirm(rows);
+  }
+
+  const BROKER_LABEL: Record<string, string> = {
+    zerodha: "Zerodha", groww: "Groww", kuvera: "Kuvera", indmoney: "INDmoney", generic: "Generic",
+  };
+
+  if (preview && parsed) {
+    const total = extractHoldingsFromFile(parsed, nameCol, valueCol).length;
+    return (
+      <div>
+        <div className="text-xs font-medium text-slate-600 mb-3">
+          {BROKER_LABEL[parsed.detectedFormat]} format — {total} holdings found
+        </div>
+        <div className="space-y-1.5 mb-4">
+          {preview.map((r, i) => (
+            <div key={i} className="flex justify-between text-sm px-3 py-2 bg-slate-50 rounded-lg">
+              <span className="text-ink font-medium">{r.name}</span>
+              <span className="text-slate-500">{formatINR(parseFloat(r.value) || 0)}</span>
+            </div>
+          ))}
+          {total > 3 && (
+            <div className="text-xs text-slate-400 px-3">… and {total - 3} more</div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setPreview(null)} className="btn-secondary text-sm">
+            ← Change columns
+          </button>
+          <button type="button" onClick={confirmImport} className="btn-primary text-sm">
+            Import all {total} {label.toLowerCase()} →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (parsed) {
+    return (
+      <div>
+        {parsed.detectedFormat !== "generic" ? (
+          <div className="text-xs text-emerald-600 font-medium mb-3">
+            ✓ {BROKER_LABEL[parsed.detectedFormat]} format detected — {parsed.rows.length} rows found
+          </div>
+        ) : (
+          <div className="text-xs text-amber-600 font-medium mb-3">
+            Unknown format — select which columns to use
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="label">Name column</label>
+            <select className="input" value={nameCol} onChange={e => setNameCol(e.target.value)}>
+              {parsed.headers.map(h => <option key={h}>{h}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Value column</label>
+            <select className="input" value={valueCol} onChange={e => setValueCol(e.target.value)}>
+              {parsed.headers.map(h => <option key={h}>{h}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => { setParsed(null); setPreview(null); }} className="btn-secondary text-sm">
+            ← Upload different file
+          </button>
+          <button type="button" onClick={buildPreview} className="btn-primary text-sm">
+            Preview import →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-slate-500 mb-3">
+        Upload your broker export or your own spreadsheet.
+        Supported: Zerodha, Groww, Kuvera, INDmoney, or any CSV/Excel.
+      </p>
+      <label
+        className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${
+          dragging ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-300"
+        }`}
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+      >
+        <input
+          type="file" className="hidden" accept=".csv,.xlsx,.xls"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        />
+        {loading ? (
+          <span className="text-sm text-slate-500">Reading file…</span>
+        ) : (
+          <>
+            <span className="text-2xl mb-2">📁</span>
+            <span className="text-sm font-medium text-slate-600">Drop file here or click to upload</span>
+            <span className="text-xs text-slate-400 mt-1">.csv and .xlsx · max 5MB</span>
+          </>
+        )}
+      </label>
+      {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
+      <button type="button" onClick={onCancel} className="btn-secondary text-sm mt-3">Cancel</button>
+    </div>
+  );
+}
+
+// ─── section with 3-tab input ─────────────────────────────────────────────
+
+function StockSection({
+  title, rows, onRowsChange, placeholder, isSip,
+}: {
+  title: string;
+  rows: { name: string; value: string }[];
+  onRowsChange: (rows: { name: string; value: string }[]) => void;
+  placeholder: string;
+  isSip?: boolean;
+}) {
+  const [mode, setMode] = useState<InputMode>("manual");
+
+  function handleConfirm(newRows: { name: string; value: string }[]) {
+    onRowsChange([...rows.filter(r => r.name && parseFloat(r.value) > 0), ...newRows]);
+    setMode("manual");
+  }
+
+  return (
+    <div className="mb-5">
+      <SubSectionTitle>{title}</SubSectionTitle>
+      <InputModeTabs mode={mode} onChange={setMode} />
+      {mode === "manual" && (
+        <>
+          {rows.map((row, i) => (
+            <RowEditor key={i}
+              left={
+                <EditInput value={row.name}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, name: v } : r))}
+                  placeholder={placeholder} />
+              }
+              right={
+                <EditInput value={row.value}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, value: v } : r))}
+                  type="number" placeholder={isSip ? "Amount/mo (₹)" : "Value (₹)"} />
+              }
+              onDelete={() => onRowsChange(rows.filter((_, j) => j !== i))}
+            />
+          ))}
+          <button
+            type="button"
+            className="text-xs text-orange-500 hover:text-orange-600 font-medium"
+            onClick={() => onRowsChange([...rows, { name: "", value: "" }])}
+          >
+            + Add row
+          </button>
+        </>
+      )}
+      {mode === "paste" && (
+        <PasteEntry
+          label={title}
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+          isSip={isSip}
+        />
+      )}
+      {mode === "csv" && (
+        <CsvEntry
+          label={title}
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+        />
+      )}
+    </div>
+  );
+}
+
+// SIP section has different row shape (monthly instead of value)
+function SipSection({
+  rows, onRowsChange,
+}: {
+  rows: SIPRow[];
+  onRowsChange: (rows: SIPRow[]) => void;
+}) {
+  const [mode, setMode] = useState<InputMode>("manual");
+
+  function handleConfirm(newRows: { name: string; value: string }[]) {
+    const sipRows: SIPRow[] = newRows.map(r => ({ name: r.name, monthly: r.value, sipType: "index" }));
+    onRowsChange([...rows.filter(r => r.name && n(r.monthly) > 0), ...sipRows]);
+    setMode("manual");
+  }
+
+  return (
+    <div>
+      <SubSectionTitle>SIPs</SubSectionTitle>
+      <InputModeTabs mode={mode} onChange={setMode} />
+      {mode === "manual" && (
+        <>
+          {rows.map((row, i) => (
+            <RowEditor key={i}
+              left={
+                <EditInput value={row.name}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, name: v } : r))}
+                  placeholder="Fund / SIP name" />
+              }
+              middle={
+                <EditSelect value={row.sipType}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, sipType: v } : r))}
+                  options={[
+                    { value: "index", label: "Index" }, { value: "active", label: "Active" },
+                    { value: "elss", label: "ELSS" }, { value: "debt", label: "Debt" },
+                  ]} />
+              }
+              right={
+                <EditInput value={row.monthly}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, monthly: v } : r))}
+                  type="number" placeholder="Amount / month" />
+              }
+              onDelete={() => onRowsChange(rows.filter((_, j) => j !== i))}
+            />
+          ))}
+          <button
+            type="button"
+            className="text-xs text-orange-500 hover:text-orange-600 font-medium mt-1"
+            onClick={() => onRowsChange([...rows, { name: "", monthly: "", sipType: "index" }])}
+          >
+            + Add SIP
+          </button>
+        </>
+      )}
+      {mode === "paste" && (
+        <PasteEntry
+          label="SIPs"
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+          isSip
+        />
+      )}
+      {mode === "csv" && (
+        <CsvEntry
+          label="SIPs"
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+        />
+      )}
+    </div>
+  );
+}
+
+// MF section has type dropdown
+function MFSection({
+  rows, onRowsChange,
+}: {
+  rows: MFRow[];
+  onRowsChange: (rows: MFRow[]) => void;
+}) {
+  const [mode, setMode] = useState<InputMode>("manual");
+
+  function handleConfirm(newRows: { name: string; value: string }[]) {
+    const mfRows: MFRow[] = newRows.map(r => ({ name: r.name, value: r.value, fundType: "index" }));
+    onRowsChange([...rows.filter(r => r.name && n(r.value) > 0), ...mfRows]);
+    setMode("manual");
+  }
+
+  return (
+    <div className="mb-5">
+      <SubSectionTitle>Mutual funds</SubSectionTitle>
+      <InputModeTabs mode={mode} onChange={setMode} />
+      {mode === "manual" && (
+        <>
+          {rows.map((row, i) => (
+            <RowEditor key={i}
+              left={
+                <EditInput value={row.name}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, name: v } : r))}
+                  placeholder="Fund name" />
+              }
+              middle={
+                <EditSelect value={row.fundType}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, fundType: v } : r))}
+                  options={[
+                    { value: "index", label: "Index" }, { value: "active", label: "Active" },
+                    { value: "elss", label: "ELSS" }, { value: "debt", label: "Debt" },
+                  ]} />
+              }
+              right={
+                <EditInput value={row.value}
+                  onChange={v => onRowsChange(rows.map((r, j) => j === i ? { ...r, value: v } : r))}
+                  type="number" placeholder="Value (₹)" />
+              }
+              onDelete={() => onRowsChange(rows.filter((_, j) => j !== i))}
+            />
+          ))}
+          <button
+            type="button"
+            className="text-xs text-orange-500 hover:text-orange-600 font-medium"
+            onClick={() => onRowsChange([...rows, { name: "", value: "", fundType: "index" }])}
+          >
+            + Add fund
+          </button>
+        </>
+      )}
+      {mode === "paste" && (
+        <PasteEntry
+          label="Mutual funds"
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+        />
+      )}
+      {mode === "csv" && (
+        <CsvEntry
+          label="Mutual funds"
+          onConfirm={handleConfirm}
+          onCancel={() => setMode("manual")}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── privacy banner ───────────────────────────────────────────────────────
+
+function PrivacyBanner() {
+  const [dismissed, setDismissed] = useState(true);
+
+  useEffect(() => {
+    setDismissed(localStorage.getItem("privacy_banner_dismissed") === "1");
+  }, []);
+
+  function dismiss() {
+    localStorage.setItem("privacy_banner_dismissed", "1");
+    setDismissed(true);
+  }
+
+  if (dismissed) return null;
+
+  return (
+    <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-5">
+      <span className="text-slate-400 mt-0.5">🔒</span>
+      <div className="flex-1 text-xs text-slate-600 leading-relaxed">
+        <strong className="text-slate-700">Your data is private and encrypted.</strong>{" "}
+        We never store PAN, Aadhaar, or broker credentials.
+        You can delete everything from{" "}
+        <Link href="/settings" className="underline hover:no-underline">Settings → Delete account</Link>.
+      </div>
+      <button
+        onClick={dismiss}
+        className="text-slate-400 hover:text-slate-600 text-lg leading-none ml-2 flex-shrink-0"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────
 
 export default function PortfolioClient({
@@ -289,7 +842,8 @@ export default function PortfolioClient({
       : buildInitialEditState({
           id: "", full_name: null, age: null, fire_target_age: null,
           monthly_income: null, monthly_expense: null, parent_support: null,
-          tax_bracket: 30, tax_regime: "new", fire_monthly_expense: null, risk_score: null,
+          tax_bracket: 30, tax_regime: "new", fire_monthly_expense: null,
+          risk_score: null, data_completeness: null,
         }, [])
   );
 
@@ -321,6 +875,8 @@ export default function PortfolioClient({
       }
       if (!user) throw new Error("Not authenticated — please sign in to save changes.");
 
+      const newCompleteness = computeDataCompleteness(editState);
+
       await supabase.from("profiles").update({
         full_name: editState.profile.full_name,
         age: parseInt(editState.profile.age) || null,
@@ -332,6 +888,7 @@ export default function PortfolioClient({
         tax_regime: editState.profile.tax_regime,
         fire_monthly_expense: n(editState.profile.fire_monthly_expense) || null,
         risk_score: parseInt(editState.profile.risk_score) || null,
+        data_completeness: newCompleteness,
         updated_at: new Date().toISOString(),
       }).eq("id", user.id);
 
@@ -412,6 +969,9 @@ export default function PortfolioClient({
           {toast}
         </div>
       )}
+
+      {/* Privacy banner */}
+      <PrivacyBanner />
 
       {/* Breadcrumb + page header */}
       <div className="flex items-center justify-between mb-6">
@@ -537,7 +1097,6 @@ function ViewMode({ profile, holdings, activeTab }: {
   if (activeTab === "investments") {
     return (
       <div className="space-y-4">
-        {/* Liquid */}
         <div className="card">
           <SectionTitle>Liquid investments</SectionTitle>
 
@@ -546,8 +1105,7 @@ function ViewMode({ profile, holdings, activeTab }: {
               <SubSectionTitle>Indian stocks</SubSectionTitle>
               <HoldingTable headers={["Name", "Current value", "% of liquid"]} rows={
                 indianStocks.map(h => [
-                  h.name,
-                  formatINR(h.value_inr),
+                  h.name, formatINR(h.value_inr),
                   totalLiquid > 0 ? `${((h.value_inr / totalLiquid) * 100).toFixed(1)}%` : "—",
                 ])
               } />
@@ -559,8 +1117,7 @@ function ViewMode({ profile, holdings, activeTab }: {
               <SubSectionTitle>US stocks</SubSectionTitle>
               <HoldingTable headers={["Name", "Current value (INR)", "% of liquid"]} rows={
                 usStocks.map(h => [
-                  h.name,
-                  formatINR(h.value_inr),
+                  h.name, formatINR(h.value_inr),
                   totalLiquid > 0 ? `${((h.value_inr / totalLiquid) * 100).toFixed(1)}%` : "—",
                 ])
               } />
@@ -571,20 +1128,16 @@ function ViewMode({ profile, holdings, activeTab }: {
             <>
               <SubSectionTitle>Mutual funds</SubSectionTitle>
               <HoldingTable headers={["Name", "Type", "Current value"]} rows={
-                mfs.map(h => [
-                  h.name,
-                  MF_TYPE_LABELS[h.notes || ""] || h.notes || "—",
-                  formatINR(h.value_inr),
-                ])
+                mfs.map(h => [h.name, MF_TYPE_LABELS[h.notes || ""] || h.notes || "—", formatINR(h.value_inr)])
               } />
             </>
           )}
 
           <SubSectionTitle>Gold &amp; cash</SubSectionTitle>
           <div className="divide-y divide-slate-50">
-            <InfoRow label="Physical gold"     value={goldPhysical ? formatINR(goldPhysical.value_inr) : "—"} />
-            <InfoRow label="Gold ETF / SGB"    value={goldEtf      ? formatINR(goldEtf.value_inr)      : "—"} />
-            <InfoRow label="FD / Emergency fund" value={fd         ? formatINR(fd.value_inr)           : "—"} />
+            <InfoRow label="Physical gold"       value={goldPhysical ? formatINR(goldPhysical.value_inr) : "—"} />
+            <InfoRow label="Gold ETF / SGB"      value={goldEtf      ? formatINR(goldEtf.value_inr)      : "—"} />
+            <InfoRow label="FD / Emergency fund" value={fd           ? formatINR(fd.value_inr)           : "—"} />
           </div>
 
           {totalLiquid === 0 && (
@@ -592,33 +1145,31 @@ function ViewMode({ profile, holdings, activeTab }: {
           )}
         </div>
 
-        {/* Locked */}
         <div className="card">
           <SectionTitle>Locked investments</SectionTitle>
           <div className="grid sm:grid-cols-2 gap-4">
             <LockedCard title="EPF" present={!!epfH} rows={[
-              { label: "Current value",                                  value: epfH ? formatINR(epfH.value_inr) : "—" },
-              { label: "Your contribution / mo",                         value: epfYour > 0 ? formatINR(epfYour) : "—" },
-              { label: "Employer contribution / mo",                     value: epfEmployer > 0 ? formatINR(epfEmployer) : "—" },
+              { label: "Current value",                                     value: epfH ? formatINR(epfH.value_inr) : "—" },
+              { label: "Your contribution / mo",                            value: epfYour > 0 ? formatINR(epfYour) : "—" },
+              { label: "Employer contribution / mo",                        value: epfEmployer > 0 ? formatINR(epfEmployer) : "—" },
               { label: `Projected at age ${profile.fire_target_age || 45}`, value: epfProjected > 0 ? formatINR(epfProjected) : "—", accent: true },
             ]} />
             <LockedCard title="NPS" present={!!npsH} rows={[
-              { label: "Current value",                                  value: npsH ? formatINR(npsH.value_inr) : "—" },
-              { label: "Monthly contribution",                           value: npsH ? formatINR(npsH.monthly_contribution || 0) : "—" },
-              { label: "Allocation type",                                value: NPS_ALLOC_LABELS[npsAlloc] || npsAlloc },
+              { label: "Current value",                                     value: npsH ? formatINR(npsH.value_inr) : "—" },
+              { label: "Monthly contribution",                              value: npsH ? formatINR(npsH.monthly_contribution || 0) : "—" },
+              { label: "Allocation type",                                   value: NPS_ALLOC_LABELS[npsAlloc] || npsAlloc },
               { label: `Projected at age ${profile.fire_target_age || 45}`, value: npsResult ? formatINR(npsResult.atRetirement) : "—", accent: true },
-              { label: "Projected at age 60",                           value: npsResult ? formatINR(npsResult.at60) : "—", accent: true },
             ]} />
             <LockedCard title="PPF" present={!!ppfH} rows={[
-              { label: "Current value",       value: ppfH ? formatINR(ppfH.value_inr) : "—" },
+              { label: "Current value",        value: ppfH ? formatINR(ppfH.value_inr) : "—" },
               { label: "Monthly contribution", value: ppfH ? formatINR(ppfH.monthly_contribution || 0) : "—" },
               { label: "Years to maturity",    value: ppfH ? `${ppfYears} years` : "—" },
               { label: "Projected at maturity", value: ppfProjected > 0 ? formatINR(ppfProjected) : "—", accent: true },
             ]} />
             <LockedCard title="LIC / Insurance" present={!!licH} rows={[
-              { label: "Current value",   value: licH ? formatINR(licH.value_inr) : "—" },
-              { label: "Annual premium",  value: licH ? formatINR((licH.monthly_contribution || 0) * 12) : "—" },
-              { label: "Policy type",     value: LIC_TYPE_LABELS[licType] || licType },
+              { label: "Current value",  value: licH ? formatINR(licH.value_inr) : "—" },
+              { label: "Annual premium", value: licH ? formatINR((licH.monthly_contribution || 0) * 12) : "—" },
+              { label: "Policy type",   value: LIC_TYPE_LABELS[licType] || licType },
             ]} />
           </div>
         </div>
@@ -626,7 +1177,6 @@ function ViewMode({ profile, holdings, activeTab }: {
     );
   }
 
-  // monthly & goals
   return (
     <div className="space-y-4">
       <div className="card">
@@ -644,9 +1194,7 @@ function ViewMode({ profile, holdings, activeTab }: {
               {sips.map((h, i) => (
                 <tr key={h.id || i} className="border-b border-slate-50">
                   <td className="py-2.5 pr-4 font-medium text-ink">{h.name.replace(/^SIP: /, "")}</td>
-                  <td className="py-2.5 pr-4 text-slate-500">
-                    {SIP_TYPE_LABELS[parseNotes(h.notes, "type")] || "SIP"}
-                  </td>
+                  <td className="py-2.5 pr-4 text-slate-500">{SIP_TYPE_LABELS[parseNotes(h.notes, "type")] || "SIP"}</td>
                   <td className="py-2.5 text-right text-ink">{formatINR(h.monthly_contribution || 0)}</td>
                 </tr>
               ))}
@@ -672,8 +1220,6 @@ function ViewMode({ profile, holdings, activeTab }: {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="Post-retirement expense" value={profile.fire_monthly_expense ? `${formatINR(profile.fire_monthly_expense)}/mo` : "—"} />
           <StatCard label="Risk appetite"           value={profile.risk_score ? `${profile.risk_score} / 10` : "—"} />
-          <StatCard label="Property owned"          value="—" />
-          <StatCard label="Dependents"              value="—" />
         </div>
       </div>
     </div>
@@ -707,10 +1253,6 @@ function HoldingTable({ headers, rows }: { headers: string[]; rows: string[][] }
   );
 }
 
-function SubSectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="text-xs font-medium text-slate-500 mb-2 mt-4 first:mt-0">{children}</div>;
-}
-
 // ─── EDIT MODE ────────────────────────────────────────────────────────────
 
 function EditView({ state, setState, activeTab }: {
@@ -721,9 +1263,6 @@ function EditView({ state, setState, activeTab }: {
   function setProfile(patch: Partial<EditState["profile"]>) {
     setState(s => ({ ...s, profile: { ...s.profile, ...patch } }));
   }
-  const blankStock = (): StockRow => ({ name: "", value: "" });
-  const blankMF    = (): MFRow   => ({ name: "", value: "", fundType: "index" });
-  const blankSIP   = (): SIPRow  => ({ name: "", monthly: "", sipType: "index" });
 
   if (activeTab === "profile") {
     return (
@@ -755,43 +1294,24 @@ function EditView({ state, setState, activeTab }: {
         <div className="card">
           <SectionTitle>Liquid investments</SectionTitle>
 
-          <div className="mb-5">
-            <SubSectionTitle>Indian stocks</SubSectionTitle>
-            {state.indianStocks.map((row, i) => (
-              <RowEditor key={i}
-                left={<EditInput value={row.name} onChange={v => setState(s => ({ ...s, indianStocks: s.indianStocks.map((r, j) => j === i ? { ...r, name: v } : r) }))} placeholder="Stock name" />}
-                right={<EditInput value={row.value} onChange={v => setState(s => ({ ...s, indianStocks: s.indianStocks.map((r, j) => j === i ? { ...r, value: v } : r) }))} type="number" placeholder="Value (₹)" />}
-                onDelete={() => setState(s => ({ ...s, indianStocks: s.indianStocks.filter((_, j) => j !== i) }))}
-              />
-            ))}
-            <button className="text-xs text-orange-500 hover:text-orange-600 font-medium" onClick={() => setState(s => ({ ...s, indianStocks: [...s.indianStocks, blankStock()] }))}>+ Add stock</button>
-          </div>
+          <StockSection
+            title="Indian stocks"
+            rows={state.indianStocks}
+            onRowsChange={rows => setState(s => ({ ...s, indianStocks: rows }))}
+            placeholder="Stock name"
+          />
 
-          <div className="mb-5">
-            <SubSectionTitle>US stocks</SubSectionTitle>
-            {state.usStocks.map((row, i) => (
-              <RowEditor key={i}
-                left={<EditInput value={row.name} onChange={v => setState(s => ({ ...s, usStocks: s.usStocks.map((r, j) => j === i ? { ...r, name: v } : r) }))} placeholder="Stock / ETF name" />}
-                right={<EditInput value={row.value} onChange={v => setState(s => ({ ...s, usStocks: s.usStocks.map((r, j) => j === i ? { ...r, value: v } : r) }))} type="number" placeholder="Value in INR (₹)" />}
-                onDelete={() => setState(s => ({ ...s, usStocks: s.usStocks.filter((_, j) => j !== i) }))}
-              />
-            ))}
-            <button className="text-xs text-orange-500 hover:text-orange-600 font-medium" onClick={() => setState(s => ({ ...s, usStocks: [...s.usStocks, blankStock()] }))}>+ Add stock</button>
-          </div>
+          <StockSection
+            title="US stocks"
+            rows={state.usStocks}
+            onRowsChange={rows => setState(s => ({ ...s, usStocks: rows }))}
+            placeholder="Stock / ETF name"
+          />
 
-          <div className="mb-5">
-            <SubSectionTitle>Mutual funds</SubSectionTitle>
-            {state.mutualFunds.map((row, i) => (
-              <RowEditor key={i}
-                left={<EditInput value={row.name} onChange={v => setState(s => ({ ...s, mutualFunds: s.mutualFunds.map((r, j) => j === i ? { ...r, name: v } : r) }))} placeholder="Fund name" />}
-                middle={<EditSelect value={row.fundType} onChange={v => setState(s => ({ ...s, mutualFunds: s.mutualFunds.map((r, j) => j === i ? { ...r, fundType: v } : r) }))}
-                  options={[{ value: "index", label: "Index" }, { value: "active", label: "Active" }, { value: "elss", label: "ELSS" }, { value: "debt", label: "Debt" }]} />}
-                right={<EditInput value={row.value} onChange={v => setState(s => ({ ...s, mutualFunds: s.mutualFunds.map((r, j) => j === i ? { ...r, value: v } : r) }))} type="number" placeholder="Value (₹)" />}
-                onDelete={() => setState(s => ({ ...s, mutualFunds: s.mutualFunds.filter((_, j) => j !== i) }))}
-              />
-            ))}
-            <button className="text-xs text-orange-500 hover:text-orange-600 font-medium" onClick={() => setState(s => ({ ...s, mutualFunds: [...s.mutualFunds, blankMF()] }))}>+ Add fund</button>
-          </div>
+          <MFSection
+            rows={state.mutualFunds}
+            onRowsChange={rows => setState(s => ({ ...s, mutualFunds: rows }))}
+          />
 
           <div>
             <SubSectionTitle>Gold &amp; cash</SubSectionTitle>
@@ -852,22 +1372,15 @@ function EditView({ state, setState, activeTab }: {
     );
   }
 
-  // monthly & goals
   return (
     <div className="space-y-4">
       <div className="card">
         <SectionTitle>Monthly investments</SectionTitle>
-        <SubSectionTitle>SIPs</SubSectionTitle>
-        {state.sips.map((row, i) => (
-          <RowEditor key={i}
-            left={<EditInput value={row.name} onChange={v => setState(s => ({ ...s, sips: s.sips.map((r, j) => j === i ? { ...r, name: v } : r) }))} placeholder="Fund / SIP name" />}
-            middle={<EditSelect value={row.sipType} onChange={v => setState(s => ({ ...s, sips: s.sips.map((r, j) => j === i ? { ...r, sipType: v } : r) }))}
-              options={[{ value: "index", label: "Index" }, { value: "active", label: "Active" }, { value: "elss", label: "ELSS" }, { value: "debt", label: "Debt" }]} />}
-            right={<EditInput value={row.monthly} onChange={v => setState(s => ({ ...s, sips: s.sips.map((r, j) => j === i ? { ...r, monthly: v } : r) }))} type="number" placeholder="Amount / month" />}
-            onDelete={() => setState(s => ({ ...s, sips: s.sips.filter((_, j) => j !== i) }))}
-          />
-        ))}
-        <button className="text-xs text-orange-500 hover:text-orange-600 font-medium mt-1" onClick={() => setState(s => ({ ...s, sips: [...s.sips, blankSIP()] }))}>+ Add SIP</button>
+
+        <SipSection
+          rows={state.sips}
+          onRowsChange={rows => setState(s => ({ ...s, sips: rows }))}
+        />
 
         <SubSectionTitle>Direct stock investments (monthly)</SubSectionTitle>
         <div className="grid sm:grid-cols-2 gap-3">

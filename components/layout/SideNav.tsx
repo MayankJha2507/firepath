@@ -63,6 +63,8 @@ interface CorpusData {
   fireAge: number | null;
   fireTarget: number;
   age: number;
+  completeness: number | null;
+  missingSections: number;
 }
 
 // ─── nav item ─────────────────────────────────────────────────────────────
@@ -130,6 +132,28 @@ function CorpusMiniCard({ data, loading }: { data: CorpusData | null; loading: b
         />
       </div>
       <div className="text-[10px] text-slate-400 mt-1.5">{pct}% of FIRE target</div>
+
+      {data.completeness !== null && (
+        <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+          <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+            <span>Portfolio accuracy</span>
+            <span>{data.completeness}%</span>
+          </div>
+          <div className="h-1 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                data.completeness === 100 ? "bg-emerald-500" : "bg-amber-400"
+              }`}
+              style={{ width: `${data.completeness}%` }}
+            />
+          </div>
+          {data.missingSections > 0 && (
+            <div className="text-[10px] text-slate-400 mt-1">
+              {data.missingSections} section{data.missingSections !== 1 ? "s" : ""} still estimated
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -230,7 +254,7 @@ export default function SideNav() {
           .maybeSingle(),
         supabase
           .from("profiles")
-          .select("age, fire_target_age, fire_monthly_expense, monthly_expense")
+          .select("age, fire_target_age, fire_monthly_expense, monthly_expense, data_completeness")
           .eq("id", user.id)
           .single(),
       ]);
@@ -241,11 +265,18 @@ export default function SideNav() {
           profile.fire_monthly_expense || profile.monthly_expense || 60000,
           yearsToFire
         );
+        const dc: Record<string, string> = profile.data_completeness || {};
+        const keys = Object.keys(dc);
+        const exactCount = keys.filter(k => dc[k] === "exact").length;
+        const completeness = keys.length > 0 ? Math.round((exactCount / keys.length) * 100) : null;
+        const missingSections = keys.filter(k => dc[k] !== "exact").length;
         setCorpusData({
           total: snap.total_corpus,
           fireAge: snap.projected_fire_age ?? null,
           fireTarget: fireCorpusTarget(inflAdj),
           age: profile.age || 30,
+          completeness,
+          missingSections,
         });
       }
       if (!cancelled) setLoading(false);
