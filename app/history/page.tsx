@@ -62,7 +62,7 @@ export default async function History() {
   return (
     <div className="min-h-screen bg-surface">
       <SideNav />
-      <main className="lg:ml-[220px] pt-14 lg:pt-0">
+      <main className="lg:ml-[220px] pt-14">
         <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
           <h1 className="text-2xl font-bold text-ink">Progress history</h1>
 

@@ -22,9 +22,9 @@ function initials(name: string): string {
 }
 
 export default function AvatarMenu({
-  name, email, size = "md",
+  name, email, size = "md", align = "left",
 }: {
-  name: string; email: string; size?: Size;
+  name: string; email: string; size?: Size; align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("system");
@@ -59,13 +59,14 @@ export default function AvatarMenu({
 
   const sz = SIZE_MAP[size];
   const displayName = name || email?.split("@")[0] || "User";
+  const dropdownPos = align === "right" ? "right-0 left-auto" : "left-0";
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
-        className={`${sz.outer} rounded-full flex items-center justify-center font-semibold ${sz.text} text-white flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-opacity hover:opacity-90`}
-        style={{ background: "var(--accent)", focusRingColor: "var(--accent)" } as React.CSSProperties}
+        className={`${sz.outer} rounded-full flex items-center justify-center font-semibold ${sz.text} text-white flex-shrink-0 focus:outline-none transition-opacity hover:opacity-85`}
+        style={{ background: "var(--accent)" }}
         aria-label="Account menu"
         title={displayName}
       >
@@ -74,8 +75,12 @@ export default function AvatarMenu({
 
       {open && (
         <div
-          className="absolute left-0 top-full mt-2 w-60 rounded-xl py-1 z-50 shadow-lg"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+          className={`absolute ${dropdownPos} top-full mt-2 w-60 rounded-xl py-1 z-50`}
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.24)",
+          }}
         >
           {/* User info */}
           <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -102,7 +107,7 @@ export default function AvatarMenu({
             <Link
               href="/settings"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors w-full"
               style={{ color: "var(--text-primary)" }}
               onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-secondary)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -113,10 +118,10 @@ export default function AvatarMenu({
 
           {/* Theme selector */}
           <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-secondary)" }}>
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-secondary)" }}>
               Theme
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               {(["light", "dark", "system"] as Theme[]).map(t => (
                 <button
                   key={t}
@@ -125,6 +130,7 @@ export default function AvatarMenu({
                   style={{
                     background: theme === t ? "var(--orange)" : "var(--bg-secondary)",
                     color: theme === t ? "#fff" : "var(--text-secondary)",
+                    border: `1px solid ${theme === t ? "var(--orange)" : "var(--border)"}`,
                   }}
                 >
                   {t}
@@ -142,7 +148,7 @@ export default function AvatarMenu({
               onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-secondary)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <span>⬚</span> Logout
+              <span>↩</span> Logout
             </button>
           </div>
         </div>

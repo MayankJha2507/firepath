@@ -82,11 +82,14 @@ function NavItem({
       className="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5 relative"
       style={{
         color: active ? "var(--orange)" : "var(--text-secondary)",
-        background: active ? "rgba(249,115,22,0.08)" : "transparent",
+        background: active ? "rgba(249,115,22,0.10)" : "transparent",
       }}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full" style={{ background: "var(--orange)" }} />
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full"
+          style={{ background: "var(--orange)" }}
+        />
       )}
       <span style={{ color: active ? "var(--orange)" : "var(--text-secondary)" }}>
         {icon}
@@ -123,10 +126,7 @@ function CorpusMiniCard({ data, loading }: { data: CorpusData | null; loading: b
         {yearsToFire !== null ? `FIRE in ${yearsToFire} yr${yearsToFire !== 1 ? "s" : ""}` : "Set up portfolio"}
       </div>
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: "var(--orange)" }}
-        />
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "var(--orange)" }} />
       </div>
       <div className="text-[10px] mt-1.5" style={{ color: "var(--text-secondary)" }}>{pct}% of FIRE target</div>
 
@@ -156,22 +156,21 @@ function CorpusMiniCard({ data, loading }: { data: CorpusData | null; loading: b
   );
 }
 
-// ─── sidebar content ──────────────────────────────────────────────────────
+// ─── sidebar-only nav content ──────────────────────────────────────────────
 
 function SidebarContent({
-  pathname, corpusData, loading, userInfo, onNavClick,
+  pathname, corpusData, loading, onNavClick,
 }: {
   pathname: string;
   corpusData: CorpusData | null;
   loading: boolean;
-  userInfo: { name: string; email: string } | null;
   onNavClick?: () => void;
 }) {
   return (
     <>
-      {/* Logo + Avatar */}
+      {/* Logo */}
       <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-        <Link href="/dashboard" onClick={onNavClick} className="flex items-center gap-2 mb-4">
+        <Link href="/dashboard" onClick={onNavClick} className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--orange)" }}>
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
@@ -182,7 +181,6 @@ function SidebarContent({
             FIRE<span style={{ color: "var(--orange)" }}>path</span>
           </span>
         </Link>
-        {userInfo && <AvatarMenu name={userInfo.name} email={userInfo.email} />}
       </div>
 
       {/* Navigation */}
@@ -277,8 +275,10 @@ export default function SideNav() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-40"
-        style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-40"
+        style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}
+      >
         <button
           onClick={() => setMobileOpen(true)}
           className="p-2 rounded-lg transition-all"
@@ -293,14 +293,24 @@ export default function SideNav() {
           FIRE<span style={{ color: "var(--orange)" }}>path</span>
         </Link>
         <div className="ml-auto">
-          {userInfo && <AvatarMenu name={userInfo.name} email={userInfo.email} size="sm" />}
+          {userInfo && <AvatarMenu name={userInfo.name} email={userInfo.email} size="sm" align="right" />}
         </div>
       </div>
 
+      {/* Desktop top bar — avatar at top-right */}
+      <div
+        className="hidden lg:flex fixed top-0 left-[220px] right-0 h-14 items-center justify-end px-6 z-20"
+        style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border)" }}
+      >
+        {userInfo && <AvatarMenu name={userInfo.name} email={userInfo.email} size="md" align="right" />}
+      </div>
+
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[220px] flex-col z-30"
-        style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border)" }}>
-        <SidebarContent pathname={pathname} corpusData={corpusData} loading={loading} userInfo={userInfo} />
+      <div
+        className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[220px] flex-col z-30"
+        style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border)" }}
+      >
+        <SidebarContent pathname={pathname} corpusData={corpusData} loading={loading} />
       </div>
 
       {/* Mobile: backdrop */}
@@ -319,11 +329,7 @@ export default function SideNav() {
           <Link href="/dashboard" className="font-bold text-base" style={{ color: "var(--text-primary)" }} onClick={() => setMobileOpen(false)}>
             FIRE<span style={{ color: "var(--orange)" }}>path</span>
           </Link>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="p-1.5 rounded-lg transition-all"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg transition-all" style={{ color: "var(--text-secondary)" }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
