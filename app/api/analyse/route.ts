@@ -101,7 +101,13 @@ export async function POST(_req: Request) {
     .eq("user_id", user.id)
     .order("snapshot_date", { ascending: false })
     .limit(1).maybeSingle();
-  if (!snap) return NextResponse.json({ error: "No snapshot" }, { status: 400 });
+  if (!snap) {
+    // In dev/bypass mode show mock so the page doesn't hard-fail
+    if (process.env.BYPASS_AUTH === "true" || process.env.BYPASS_PRO_GATE === "true") {
+      return NextResponse.json({ analysis: MOCK_ANALYSIS, cached: false });
+    }
+    return NextResponse.json({ error: "No snapshot found. Set up your portfolio first." }, { status: 400 });
+  }
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: cached } = await supabase

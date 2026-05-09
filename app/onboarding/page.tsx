@@ -82,10 +82,21 @@ export default function Onboarding() {
     setError(null);
     setCalculating(true);
 
-    if (bypassAuth) {
+    // Check real auth state — bypass only if truly no session
+    const { createClient: supabaseClient } = await import("@/lib/supabase/client");
+    const sb = supabaseClient();
+    const { data: { user } } = await sb.auth.getUser();
+
+    if (!user && bypassAuth) {
       await new Promise(r => setTimeout(r, 2000));
       router.push("/dashboard");
       router.refresh();
+      return;
+    }
+
+    if (!user) {
+      setError("You need to be signed in. Please go to /auth and sign in first.");
+      setCalculating(false);
       return;
     }
 
