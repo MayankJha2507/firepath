@@ -29,22 +29,32 @@ export async function POST(req: Request) {
     gold: "missing", epf: "estimated", nps: "missing", ppf: "missing", sips: "missing",
   };
 
-  const { error: pErr } = await supabase.from("profiles").update({
+  // Core fields — always exist in schema
+  const coreUpdate = {
     age: ageN,
     fire_target_age: retireN,
+    monthly_income: incomeN,
+    monthly_expense: expenseN,
+    fire_monthly_expense: fireExpN,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Try full update (includes new columns from 0002 migration)
+  const { error: pErr } = await supabase.from("profiles").update({
+    ...coreUpdate,
     years_working: yearsN,
     income_range,
     expense_range,
     savings_range,
     fire_expense_range,
-    monthly_income: incomeN,
-    monthly_expense: expenseN,
-    fire_monthly_expense: fireExpN,
     data_completeness: dataCompleteness,
-    updated_at: new Date().toISOString(),
   }).eq("id", user.id);
 
-  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+  if (pErr) {
+    // New columns may not exist yet — fall back to core fields only
+    const { error: pErr2 } = await supabase.from("profiles").update(coreUpdate).eq("id", user.id);
+    if (pErr2) return NextResponse.json({ error: pErr2.message }, { status: 500 });
+  }
 
   // Estimated snapshot: 60/40 liquid/locked split, typical Indian allocation
   const liquidCorpus = corpusN * 0.6;
