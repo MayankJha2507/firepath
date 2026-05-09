@@ -3,6 +3,7 @@ import {
   formatINR, milestoneProjections, yearByYearProjection,
   fireCorpusTarget, inflationAdjustedExpense,
   equityProjection, epfProjection, ppfProjection, npsProjection,
+  fireBridgeAnalysis,
 } from "@/lib/fire-calculator";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import CorpusBarChart from "@/components/charts/CorpusBarChart";
 import SideNav from "@/components/layout/SideNav";
 import DataQualityBadge, { computeCompleteness } from "@/components/ui/DataQualityBadge";
 import type { DataQuality } from "@/components/ui/DataQualityBadge";
+import FireStatusBanner, { type BannerState } from "@/components/ui/FireStatusBanner";
 
 const DEV_PROFILE = {
   id: "dev", full_name: "Dev User", age: 30, fire_target_age: 45,
@@ -82,12 +84,12 @@ export default async function Dashboard() {
 
   if (hasNoSnapshot && !isDevMock) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <SideNav />
         <main className="lg:ml-[220px] pt-14 lg:pt-0 min-h-screen flex items-center justify-center px-6">
           <div className="card max-w-md w-full text-center py-12">
             <div className="text-4xl mb-4">📊</div>
-            <h2 className="text-xl font-semibold text-ink mb-2">Portfolio not set up yet</h2>
+            <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Portfolio not set up yet</h2>
             <p className="text-sm text-slate-500 mb-6">
               Add your investments to see your FIRE projections, asset allocation, and milestone tracker.
             </p>
@@ -124,6 +126,23 @@ export default async function Dashboard() {
     ? (profile.fire_target_age - snap.projected_fire_age) * 12
     : null;
 
+  // FIRE status banner
+  const projAge = snap.projected_fire_age ?? (profile.age || 30) + yearsToFire;
+  const targetAge = profile.fire_target_age || 45;
+  const diffYears = targetAge - projAge; // positive = early, negative = behind
+  let bannerState: BannerState;
+  if (diffYears >= 0) bannerState = "on_track";
+  else if (diffYears >= -2) bannerState = "close";
+  else bannerState = "needs_work";
+
+  const bridge = fireBridgeAnalysis(liquidAtRetirement, fireTarget);
+  let additionalSipNeeded = 0;
+  if (bridge.gap > 0 && yearsToFire > 0) {
+    const r = 0.12 / 12;
+    const n = yearsToFire * 12;
+    additionalSipNeeded = bridge.gap * r / (Math.pow(1 + r, n) - 1);
+  }
+
   // Data quality per card
   const corpusQuality: DataQuality = dc.savings === "exact" ? "exact" : dc.savings ? "estimated" : "missing";
   const expenseQuality: DataQuality = dc.expenses === "exact" ? "exact" : dc.expenses ? "estimated" : "missing";
@@ -134,7 +153,7 @@ export default async function Dashboard() {
   const allComplete = completenessRaw && Object.values(dc).every(v => v === "exact");
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
 
       <main className="lg:ml-[220px] pt-14 lg:pt-0">
@@ -142,14 +161,23 @@ export default async function Dashboard() {
           {/* Greeting */}
           <div className="flex items-end justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-ink">
+              <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
                 Hey {profile.full_name?.split(" ")[0] || "there"} 👋
               </h1>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
                 {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
               </p>
             </div>
           </div>
+
+          {/* FIRE status banner */}
+          <FireStatusBanner
+            state={bannerState}
+            projectedFireAge={Math.round(projAge)}
+            targetFireAge={targetAge}
+            diffYears={diffYears}
+            additionalSipNeeded={Math.round(additionalSipNeeded)}
+          />
 
           {/* Estimated data banner */}
           {isEstimated && (

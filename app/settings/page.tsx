@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SideNav from "@/components/layout/SideNav";
+import DeleteAccountModal from "@/components/ui/DeleteAccountModal";
 
 export default async function Settings() {
   const supabase = createClient();
@@ -12,11 +13,11 @@ export default async function Settings() {
     : { data: null };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
       <main className="lg:ml-[220px] pt-14 lg:pt-0">
         <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
-          <h1 className="text-2xl font-bold text-ink mb-6">Settings</h1>
+          <h1 className="text-2xl font-semibold mb-6" style={{ color: "var(--text-primary)" }}>Settings</h1>
 
           <div className="card">
             <div className="section-title mb-4">Account</div>
@@ -33,8 +34,10 @@ export default async function Settings() {
             <div className="section-title mb-4">Plan</div>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-semibold text-ink capitalize">{profile?.tier || "free"}</div>
-                <div className="text-sm text-muted mt-0.5">
+                <div className="text-sm font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
+                  {profile?.tier || "free"}
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
                   {profile?.tier === "pro" ? "All features unlocked." : "Upgrade for AI analysis and full history."}
                 </div>
               </div>
@@ -45,15 +48,17 @@ export default async function Settings() {
           </div>
 
           <div className="card">
-            <div className="section-title mb-4">Danger zone</div>
+            <div className="section-title mb-4">Session</div>
             <form action="/auth/signout" method="post">
-              <button type="submit" className="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
+              <button type="submit" className="btn-secondary text-sm" style={{ color: "var(--danger)", borderColor: "var(--danger)" }}>
                 Sign out
               </button>
             </form>
           </div>
 
-          <p className="disclaimer">For educational purposes only. Not SEBI-registered investment advice.</p>
+          <DeleteAccountModal />
+
+          <p className="disclaimer pb-4">For educational purposes only. Not SEBI-registered investment advice.</p>
         </div>
       </main>
     </div>
@@ -62,9 +67,9 @@ export default async function Settings() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between py-2 border-b border-slate-50 last:border-0">
-      <span className="text-muted">{label}</span>
-      <span className="font-medium text-ink">{value}</span>
+    <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--border)" }}>
+      <span style={{ color: "var(--text-secondary)" }}>{label}</span>
+      <span className="font-medium" style={{ color: "var(--text-primary)" }}>{value}</span>
     </div>
   );
 }
