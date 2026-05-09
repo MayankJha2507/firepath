@@ -11,12 +11,15 @@ import AllocationDonut from "@/components/charts/AllocationDonut";
 import ProjectionChart from "@/components/charts/ProjectionChart";
 import CorpusBarChart from "@/components/charts/CorpusBarChart";
 import SideNav from "@/components/layout/SideNav";
+import DataQualityBadge, { computeCompleteness } from "@/components/ui/DataQualityBadge";
+import type { DataQuality } from "@/components/ui/DataQualityBadge";
 
 const DEV_PROFILE = {
   id: "dev", full_name: "Dev User", age: 30, fire_target_age: 45,
   monthly_income: 200000, monthly_expense: 100000, tier: "pro",
   tax_bracket: 30, tax_regime: "new", risk_score: 7,
   fire_monthly_expense: 80000, parent_support: 10000,
+  data_completeness: null as any,
 };
 const DEV_SNAP = {
   id: "dev-snap", total_corpus: 8500000, liquid_corpus: 6000000,
@@ -29,6 +32,16 @@ const DEV_HOLDINGS = [
 ];
 
 const bypassProGate = process.env.BYPASS_PRO_GATE === "true";
+
+const NUDGE_ITEMS = [
+  { key: "indian_stocks", label: "Indian stocks",  desc: "Your equity allocation is estimated.", href: "/portfolio" },
+  { key: "us_stocks",     label: "US stocks",       desc: "Missing your international exposure.", href: "/portfolio" },
+  { key: "mutual_funds",  label: "Mutual funds",    desc: "Your fund allocation is missing.", href: "/portfolio" },
+  { key: "gold",          label: "Gold",            desc: "Gold allocation not tracked.", href: "/portfolio" },
+  { key: "nps",           label: "NPS",             desc: "Can't project locked corpus accurately.", href: "/portfolio" },
+  { key: "ppf",           label: "PPF",             desc: "PPF corpus not tracked.", href: "/portfolio" },
+  { key: "sips",          label: "SIPs",            desc: "Monthly SIP amount not tracked.", href: "/portfolio" },
+];
 
 export default async function Dashboard() {
   const isDev = process.env.NODE_ENV === "development";
@@ -59,14 +72,14 @@ export default async function Dashboard() {
     }
   }
 
-  // In dev mode without a real user, fall back to mock data
   const isDevMock = isDev && !user;
   if (!profile) profile = DEV_PROFILE;
   if (!snap && isDevMock) { snap = DEV_SNAP; holdings = DEV_HOLDINGS; }
 
   const isPro = profile.tier === "pro" || bypassProGate;
+  const dc: Record<string, string> = profile.data_completeness || {};
+  const completenessRaw = Object.keys(dc).length > 0 ? dc : null;
 
-  // If authenticated user has no snapshot, show empty state
   if (hasNoSnapshot && !isDevMock) {
     return (
       <div className="min-h-screen bg-surface">
@@ -111,6 +124,15 @@ export default async function Dashboard() {
     ? (profile.fire_target_age - snap.projected_fire_age) * 12
     : null;
 
+  // Data quality per card
+  const corpusQuality: DataQuality = dc.savings === "exact" ? "exact" : dc.savings ? "estimated" : "missing";
+  const expenseQuality: DataQuality = dc.expenses === "exact" ? "exact" : dc.expenses ? "estimated" : "missing";
+  const isEstimated = completenessRaw && Object.values(dc).some(v => v !== "exact");
+
+  // Nudge items: only show sections that are missing
+  const missingNudges = NUDGE_ITEMS.filter(item => dc[item.key] === "missing");
+  const allComplete = completenessRaw && Object.values(dc).every(v => v === "exact");
+
   return (
     <div className="min-h-screen bg-surface">
       <SideNav />
@@ -129,22 +151,44 @@ export default async function Dashboard() {
             </div>
           </div>
 
+          {/* Estimated data banner */}
+          {isEstimated && (
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+              <p className="text-sm text-amber-800">
+                <strong>Projections are estimated</strong> — based on your selected ranges.{" "}
+                <Link href="/portfolio" className="underline hover:no-underline font-medium">
+                  Add exact holdings →
+                </Link>
+              </p>
+            </div>
+          )}
+
           {/* Row 1 — Metric cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard label="Total corpus"   value={formatINR(snap.total_corpus)}  sub="All holdings combined" accent="orange" />
-            <MetricCard label="Liquid corpus"  value={formatINR(snap.liquid_corpus)} sub={`${((snap.liquid_corpus / snap.total_corpus) * 100 || 0).toFixed(0)}% of total`} accent="blue" />
-            <MetricCard label="FIRE target"    value={formatINR(fireTarget)}          sub={`At age ${profile.fire_target_age || 45}`} accent="violet" />
-            <MetricCard label="Projected FIRE" value={`Age ${snap.projected_fire_age?.toFixed(0) ?? "—"}`} sub={fireDateDiff !== null ? fireDateStatus(fireDateDiff) : ""} accent="green" fireDiff={fireDateDiff} />
+            <MetricCard label="Total corpus"   value={formatINR(snap.total_corpus)}  sub="All holdings combined" accent="orange" quality={corpusQuality} />
+            <MetricCard label="Liquid corpus"  value={formatINR(snap.liquid_corpus)} sub={`${((snap.liquid_corpus / snap.total_corpus) * 100 || 0).toFixed(0)}% of total`} accent="blue" quality={corpusQuality} />
+            <MetricCard label="FIRE target"    value={formatINR(fireTarget)}          sub={`At age ${profile.fire_target_age || 45}`} accent="violet" quality={expenseQuality} />
+            <MetricCard label="Projected FIRE" value={`Age ${snap.projected_fire_age?.toFixed(0) ?? "—"}`} sub={fireDateDiff !== null ? fireDateStatus(fireDateDiff) : ""} accent="green" fireDiff={fireDateDiff} quality={corpusQuality} />
           </div>
 
           {/* Row 2 — Allocation + Corpus bar */}
           <div className="grid md:grid-cols-2 gap-4">
             <div className="card">
-              <div className="section-title mb-4">Asset allocation</div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="section-title">Asset allocation</div>
+                {completenessRaw && <DataQualityBadge quality={dc.indian_stocks === "exact" && dc.mutual_funds === "exact" ? "exact" : "estimated"} />}
+              </div>
               <AllocationDonut
                 equity={snap.equity_pct || 0} debt={snap.debt_pct || 0}
                 gold={snap.gold_pct || 0}   cash={snap.cash_pct || 0}
               />
+              {isEstimated && (
+                <p className="text-xs text-slate-400 mt-3">
+                  Showing estimated allocation.{" "}
+                  <Link href="/portfolio" className="text-orange-500 hover:underline">Add holdings →</Link>
+                </p>
+              )}
             </div>
             <div className="card">
               <div className="section-title mb-4">Liquid vs locked — today vs retirement</div>
@@ -158,7 +202,10 @@ export default async function Dashboard() {
           {/* Row 3 — Year-by-year projection */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <div className="section-title">Corpus projection</div>
+              <div className="flex items-center gap-3">
+                <div className="section-title">Corpus projection</div>
+                {completenessRaw && <DataQualityBadge quality={corpusQuality} linkTo="/portfolio" />}
+              </div>
               <div className="flex items-center gap-4 text-xs text-slate-500">
                 <span><span className="inline-block w-3 h-0.5 bg-orange-400 mr-1 align-middle" />Your trajectory</span>
                 <span><span className="inline-block w-3 h-0.5 bg-blue-400 mr-1 align-middle border-dashed border-t-2" />FIRE target</span>
@@ -170,7 +217,10 @@ export default async function Dashboard() {
           {/* Row 4 — Milestones + savings gauge */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="card md:col-span-2">
-              <div className="section-title mb-4">Corpus milestones</div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="section-title">Corpus milestones</div>
+                {completenessRaw && <DataQualityBadge quality={corpusQuality} />}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "₹1 Cr",  months: mData.oneCr },
@@ -178,7 +228,7 @@ export default async function Dashboard() {
                   { label: "₹5 Cr",  months: mData.fiveCr },
                   { label: "₹10 Cr", months: mData.tenCr },
                 ].map(m => (
-                  <MilestoneCard key={m.label} label={m.label} months={m.months} />
+                  <MilestoneCard key={m.label} label={m.label} months={m.months} estimated={!!isEstimated} />
                 ))}
               </div>
             </div>
@@ -187,6 +237,43 @@ export default async function Dashboard() {
               <SavingsGauge pct={snap.savings_rate || 0} />
             </div>
           </div>
+
+          {/* Improve accuracy nudge cards */}
+          {missingNudges.length > 0 && (
+            <div className="card">
+              <div className="section-title mb-4">Improve your accuracy</div>
+              <div className="space-y-3">
+                {missingNudges.map(item => (
+                  <div key={item.key} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0" />
+                      <div>
+                        <div className="text-sm font-medium text-ink capitalize">
+                          {item.label} not added
+                        </div>
+                        <div className="text-xs text-slate-400">{item.desc}</div>
+                      </div>
+                    </div>
+                    <Link
+                      href={item.href}
+                      className="text-xs text-orange-500 font-medium hover:underline whitespace-nowrap ml-4"
+                    >
+                      Add →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {allComplete && (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <span className="text-emerald-500">✓</span>
+              <p className="text-sm text-emerald-800 font-medium">
+                Portfolio complete — all projections are based on your exact data.
+              </p>
+            </div>
+          )}
 
           {/* Row 5 — AI analysis preview */}
           <AIPreviewCard isPro={isPro} />
@@ -211,8 +298,9 @@ function fireDateStatus(diffMonths: number): string {
 
 // ─── sub-components ───────────────────────────────────────────────────────
 
-function MetricCard({ label, value, sub, accent, fireDiff }: {
-  label: string; value: string; sub?: string; accent: string; fireDiff?: number | null;
+function MetricCard({ label, value, sub, accent, fireDiff, quality }: {
+  label: string; value: string; sub?: string; accent: string;
+  fireDiff?: number | null; quality?: DataQuality;
 }) {
   const border: Record<string, string> = {
     orange: "border-t-orange-400", blue: "border-t-blue-400",
@@ -223,22 +311,30 @@ function MetricCard({ label, value, sub, accent, fireDiff }: {
     <div className={`card border-t-2 ${border[accent] || ""}`}>
       <div className="text-xs font-medium text-slate-500 mb-2">{label}</div>
       <div className="text-2xl font-bold text-ink tracking-tight">{value}</div>
+      {quality && (
+        <div className="mt-1.5">
+          <DataQualityBadge quality={quality} linkTo="/portfolio" />
+        </div>
+      )}
       {sub && <div className={`text-xs mt-1 ${fireDiff != null ? fireDiffColor : "text-slate-400"}`}>{sub}</div>}
     </div>
   );
 }
 
-function MilestoneCard({ label, months }: { label: string; months: number }) {
+function MilestoneCard({ label, months, estimated }: { label: string; months: number; estimated?: boolean }) {
   const achieved = months === 0;
   const unreachable = !isFinite(months);
   return (
     <div className={`rounded-xl p-3 text-center border ${achieved ? "bg-emerald-50 border-emerald-200" : "bg-surface border-slate-100"}`}>
       <div className={`font-semibold text-sm ${achieved ? "text-emerald-700" : "text-ink"}`}>{label}</div>
-      <div className={`text-xs mt-1 ${achieved ? "text-emerald-600" : "text-slate-400"}`}>
+      <div className={`text-xs mt-1 flex items-center justify-center gap-1 ${achieved ? "text-emerald-600" : "text-slate-400"}`}>
         {achieved ? "✓ Achieved"
           : unreachable ? "Increase SIPs"
           : months < 12 ? `${months}mo`
           : `${(months / 12).toFixed(1)}yr`}
+        {!achieved && !unreachable && estimated && (
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+        )}
       </div>
     </div>
   );
