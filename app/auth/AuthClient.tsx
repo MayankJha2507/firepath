@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function AuthPage() {
   const router = useRouter();
-  // createClient() is called inside handlers, not at render time,
-  // so it only runs in the browser where env vars are available.
   function getClient() { return createClient(); }
   const [mode, setMode] = useState<"signin" | "signup">("signup");
+
+  // Handle magic-link / OAuth hash fragment (#access_token=...) on page load
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.includes("access_token")) return;
+    const supabase = getClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace("/dashboard");
+    });
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
