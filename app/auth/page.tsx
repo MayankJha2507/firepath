@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -7,7 +9,9 @@ import Link from "next/link";
 
 export default function AuthPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // createClient() is called inside handlers, not at render time,
+  // so it only runs in the browser where env vars are available.
+  function getClient() { return createClient(); }
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +23,7 @@ export default function AuthPage() {
     e.preventDefault();
     setErr(null);
     setLoading(true);
+    const supabase = getClient();
     const fn = mode === "signin"
       ? supabase.auth.signInWithPassword({ email, password })
       : supabase.auth.signUp({ email, password });
@@ -31,6 +36,7 @@ export default function AuthPage() {
   }
 
   async function google() {
+    const supabase = getClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
