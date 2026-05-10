@@ -2,6 +2,8 @@
 
 **India-first FIRE (Financial Independence, Retire Early) planning SaaS**
 
+*Website: https://firepath-pi.vercel.app/#features*
+
 Built for Indian professionals and NRIs who are tired of US-centric tools that don't understand EPF lock-in, NPS annuity rules, or Indian tax slabs.
 
 ---
