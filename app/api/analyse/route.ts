@@ -136,8 +136,8 @@ export async function POST(_req: Request) {
     if (msg.includes("429") || msg.includes("quota") || msg.includes("rate") || msg.includes("Too Many")) {
       const fallback = {
         ...MOCK_ANALYSIS,
-        headline: "Gemini API quota exceeded — showing a sample analysis. Add a paid Gemini API key to enable live analysis.",
-        disclaimer: "Live AI analysis unavailable: free Gemini tier quota exhausted. " + MOCK_ANALYSIS.disclaimer,
+        headline: "Groq API quota exceeded — showing a sample analysis. Check your GROQ_API_KEY in environment variables.",
+        disclaimer: "Live AI analysis unavailable: Groq API quota exhausted or key missing. " + MOCK_ANALYSIS.disclaimer,
       };
       return NextResponse.json({ analysis: fallback, cached: false, quota_exceeded: true });
     }
@@ -152,7 +152,7 @@ export async function POST(_req: Request) {
     user_id: user.id,
     snapshot_id: snap.id,
     analysis_json: parsed,
-    provider: process.env.AI_PROVIDER || "gemini",
+    provider: "groq",
   });
 
   return NextResponse.json({ analysis: parsed, cached: false });
