@@ -60,18 +60,17 @@ export default async function History() {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
       <main className="lg:ml-[220px] pt-14">
         <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
-          <h1 className="text-2xl font-bold text-ink">Progress history</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Progress history</h1>
 
-          {/* Upsell for free tier */}
           {!isPro && (
-            <div className="card text-center py-10 bg-gradient-to-b from-white to-surface">
+            <div className="card text-center py-10">
               <div className="text-3xl mb-3">📈</div>
-              <h2 className="text-xl font-semibold text-ink mb-2">Track your progress over time</h2>
-              <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
+              <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Track your progress over time</h2>
+              <p className="text-sm mb-5 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
                 Corpus history, FIRE age trajectory, savings trend, and milestone timeline are Pro features.
               </p>
               <button className="btn-primary px-8">Upgrade to Pro — ₹499/mo</button>
@@ -79,7 +78,6 @@ export default async function History() {
           )}
 
           <div className={!isPro ? "blur-sm pointer-events-none select-none space-y-5" : "space-y-5"}>
-            {/* Corpus over time */}
             <div className="card">
               <div className="section-title mb-4">Corpus over time</div>
               {corpusData.length >= 2
@@ -87,7 +85,6 @@ export default async function History() {
                 : <EmptyChart msg="Add more snapshots to see your progress trend." />}
             </div>
 
-            {/* FIRE age trajectory */}
             <div className="card">
               <div className="section-title mb-4">Projected FIRE age — is it moving closer?</div>
               {fireAgeData.length >= 2
@@ -95,7 +92,6 @@ export default async function History() {
                 : <EmptyChart msg="More snapshots needed to show FIRE age trajectory." />}
             </div>
 
-            {/* Savings rate trend */}
             <div className="card">
               <div className="section-title mb-4">Savings rate trend</div>
               {savingsData.length >= 2
@@ -103,21 +99,20 @@ export default async function History() {
                 : <EmptyChart msg="More snapshots needed to show savings rate trend." />}
             </div>
 
-            {/* Milestone timeline */}
             {milestones.length > 0 && (
               <div className="card">
                 <div className="section-title mb-4">Milestones achieved</div>
                 <div className="relative pl-5">
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-100" />
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: "var(--border)" }} />
                   <div className="space-y-4">
                     {milestones.map(m => (
                       <div key={m.id} className="relative flex items-start gap-3">
-                        <div className="absolute -left-5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white mt-1.5" />
+                        <div className="absolute -left-5 w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5" style={{ boxShadow: "0 0 0 2px var(--bg-card)" }} />
                         <div>
-                          <div className="font-medium text-sm text-ink">
+                          <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
                             {MILESTONE_LABELS[m.milestone_type] || m.milestone_type}
                           </div>
-                          <div className="text-xs text-slate-400 mt-0.5">
+                          <div className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
                             {new Date(m.achieved_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
                             {m.corpus_value ? ` · ${formatINR(m.corpus_value)}` : ""}
                           </div>
@@ -129,15 +124,14 @@ export default async function History() {
               </div>
             )}
 
-            {/* Snapshot table */}
             <div className="card overflow-x-auto">
               <div className="section-title mb-4">All snapshots</div>
               {snaps.length === 0 ? (
-                <p className="text-sm text-slate-400">No snapshots yet.</p>
+                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No snapshots yet.</p>
               ) : (
                 <table className="w-full text-sm min-w-[560px]">
                   <thead>
-                    <tr className="text-xs text-slate-400 border-b border-slate-100">
+                    <tr className="text-xs border-b" style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}>
                       <th className="text-left py-2 pr-4 font-medium">Date</th>
                       <th className="text-right py-2 pr-4 font-medium">Total</th>
                       <th className="text-right py-2 pr-4 font-medium">Liquid</th>
@@ -148,15 +142,15 @@ export default async function History() {
                   </thead>
                   <tbody>
                     {[...snaps].reverse().map(s => (
-                      <tr key={s.id} className="border-b border-slate-50 last:border-0">
-                        <td className="py-2.5 pr-4 text-slate-500">
+                      <tr key={s.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+                        <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
                           {new Date(s.snapshot_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </td>
-                        <td className="py-2.5 pr-4 text-right font-semibold text-ink">{formatINR(s.total_corpus)}</td>
-                        <td className="py-2.5 pr-4 text-right text-slate-600">{formatINR(s.liquid_corpus)}</td>
-                        <td className="py-2.5 pr-4 text-right text-slate-600">{formatINR(s.locked_corpus)}</td>
-                        <td className="py-2.5 pr-4 text-right text-slate-600">{s.projected_fire_age?.toFixed(0) ?? "—"}</td>
-                        <td className="py-2.5 text-right text-slate-600">{s.savings_rate?.toFixed(1) ?? "—"}%</td>
+                        <td className="py-2.5 pr-4 text-right font-semibold" style={{ color: "var(--text-primary)" }}>{formatINR(s.total_corpus)}</td>
+                        <td className="py-2.5 pr-4 text-right" style={{ color: "var(--text-secondary)" }}>{formatINR(s.liquid_corpus)}</td>
+                        <td className="py-2.5 pr-4 text-right" style={{ color: "var(--text-secondary)" }}>{formatINR(s.locked_corpus)}</td>
+                        <td className="py-2.5 pr-4 text-right" style={{ color: "var(--text-secondary)" }}>{s.projected_fire_age?.toFixed(0) ?? "—"}</td>
+                        <td className="py-2.5 text-right" style={{ color: "var(--text-secondary)" }}>{s.savings_rate?.toFixed(1) ?? "—"}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -174,7 +168,7 @@ export default async function History() {
 
 function EmptyChart({ msg }: { msg: string }) {
   return (
-    <div className="h-36 flex items-center justify-center text-sm text-slate-400 bg-surface rounded-xl border border-slate-100">
+    <div className="h-36 flex items-center justify-center text-sm rounded-xl" style={{ color: "var(--text-secondary)", background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
       {msg}
     </div>
   );
