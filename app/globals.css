@@ -130,10 +130,15 @@ html, body {
     color: var(--text-secondary);
   }
 
-  .badge-green  { @apply inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full; }
-  .badge-amber  { @apply inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full; }
-  .badge-red    { @apply inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full; }
-  .badge-blue   { @apply inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full; }
+  .badge-green  { @apply inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50  border border-emerald-200 px-2.5 py-1 rounded-full; }
+  .badge-amber  { @apply inline-flex items-center gap-1 text-xs font-medium text-amber-700  bg-amber-50   border border-amber-200  px-2.5 py-1 rounded-full; }
+  .badge-red    { @apply inline-flex items-center gap-1 text-xs font-medium text-red-700    bg-red-50     border border-red-200    px-2.5 py-1 rounded-full; }
+  .badge-blue   { @apply inline-flex items-center gap-1 text-xs font-medium text-blue-700   bg-blue-50    border border-blue-200   px-2.5 py-1 rounded-full; }
+
+  .dark .badge-green { @apply text-emerald-300 bg-emerald-500/10 border-emerald-500/25; }
+  .dark .badge-amber { @apply text-amber-300   bg-amber-500/10   border-amber-500/25; }
+  .dark .badge-red   { @apply text-red-300     bg-red-500/10     border-red-500/25; }
+  .dark .badge-blue  { @apply text-blue-300    bg-blue-500/10    border-blue-500/25; }
 
   .section-title {
     @apply text-xs font-semibold uppercase tracking-widest;
