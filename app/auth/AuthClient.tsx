@@ -33,11 +33,11 @@ export default function AuthPage() {
     const fn = mode === "signin"
       ? supabase.auth.signInWithPassword({ email, password })
       : supabase.auth.signUp({ email, password });
-    const { error } = await fn;
+    const { data, error } = await fn;
     setLoading(false);
     if (error) { setErr(error.message); return; }
-    if (mode === "signup") { setDone(true); return; }
-    router.push("/dashboard");
+    if (mode === "signup" && !data.session) { setDone(true); return; }
+    router.push(mode === "signup" ? "/onboarding" : "/dashboard");
     router.refresh();
   }
 
