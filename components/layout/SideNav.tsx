@@ -208,18 +208,37 @@ function SidebarContent({
   );
 }
 
+// ─── module-level cache (persists across navigations) ─────────────────────
+
+let _cache: {
+  corpus: CorpusData | null;
+  user: { name: string; email: string } | null;
+  fetchedAt: number;
+} | null = null;
+const CACHE_TTL = 60_000; // 1 minute
+
+export function invalidateSideNavCache() { _cache = null; }
+
 // ─── main export ──────────────────────────────────────────────────────────
 
 export default function SideNav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [corpusData, setCorpusData] = useState<CorpusData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState<{ name: string; email: string } | null>(null);
+  const [corpusData, setCorpusData] = useState<CorpusData | null>(_cache?.corpus ?? null);
+  const [loading, setLoading] = useState(_cache === null);
+  const [userInfo, setUserInfo] = useState<{ name: string; email: string } | null>(_cache?.user ?? null);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
+    // Use cached data if still fresh
+    if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL) {
+      setCorpusData(_cache.corpus);
+      setUserInfo(_cache.user);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     async function fetchData() {
       const supabase = createClient();
@@ -242,9 +261,8 @@ export default function SideNav() {
       ]);
 
       if (!cancelled) {
-        if (profile) {
-          setUserInfo({ name: profile.full_name || "", email: user.email || "" });
-        }
+        const userInfoData = profile ? { name: profile.full_name || "", email: user.email || "" } : null;
+        let corpusResult: CorpusData | null = null;
         if (snap && profile) {
           const yearsToFire = Math.max(1, (profile.fire_target_age || 45) - (profile.age || 30));
           const inflAdj = inflationAdjustedExpense(
@@ -254,23 +272,24 @@ export default function SideNav() {
           const dc: Record<string, string> = profile.data_completeness || {};
           const keys = Object.keys(dc);
           const exactCount = keys.filter(k => dc[k] === "exact").length;
-          const completeness = keys.length > 0 ? Math.round((exactCount / keys.length) * 100) : null;
-          const missingSections = keys.filter(k => dc[k] !== "exact").length;
-          setCorpusData({
+          corpusResult = {
             total: snap.total_corpus,
             fireAge: snap.projected_fire_age ?? null,
             fireTarget: fireCorpusTarget(inflAdj),
             age: profile.age || 30,
-            completeness,
-            missingSections,
-          });
+            completeness: keys.length > 0 ? Math.round((exactCount / keys.length) * 100) : null,
+            missingSections: keys.filter(k => dc[k] !== "exact").length,
+          };
         }
+        _cache = { corpus: corpusResult, user: userInfoData, fetchedAt: Date.now() };
+        setCorpusData(corpusResult);
+        setUserInfo(userInfoData);
         setLoading(false);
       }
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [pathname]);
+  }, []);
 
   return (
     <>
