@@ -182,7 +182,7 @@ function computeDataCompleteness(state: EditState): Record<string, string> {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
+    <h3 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--text-secondary)" }}>
       {children}
     </h3>
   );
@@ -190,18 +190,18 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-baseline py-2.5 border-b border-slate-50 last:border-0">
-      <span className="text-sm text-slate-500">{label}</span>
-      <span className="text-sm font-medium text-slate-800">{value || "—"}</span>
+    <div className="flex justify-between items-baseline py-2.5 border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+      <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{label}</span>
+      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{value || "—"}</span>
     </div>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
-      <div className="text-xs text-slate-400 mb-1">{label}</div>
-      <div className="font-semibold text-slate-800 text-sm">{value || "—"}</div>
+    <div className="rounded-xl p-3.5" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+      <div className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{label}</div>
+      <div className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{value || "—"}</div>
     </div>
   );
 }
@@ -212,17 +212,17 @@ function LockedCard({ title, present, rows }: {
   rows: { label: string; value: string; accent?: boolean }[];
 }) {
   return (
-    <div className={`rounded-xl border p-4 ${present ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}>
-      <div className="font-semibold text-slate-800 text-sm mb-3 flex items-center gap-2">
+    <div className="rounded-xl p-4" style={{ border: "1px solid var(--border)", background: present ? "var(--bg-card)" : "var(--bg-secondary)" }}>
+      <div className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
         {title}
-        {!present && <span className="text-xs font-normal text-slate-400">Not added</span>}
+        {!present && <span className="text-xs font-normal" style={{ color: "var(--text-secondary)" }}>Not added</span>}
       </div>
       {present && (
         <div className="space-y-2">
           {rows.map(row => (
             <div key={row.label} className="flex justify-between text-xs">
-              <span className="text-slate-500">{row.label}</span>
-              <span className={row.accent ? "font-semibold text-orange-600" : "text-slate-700"}>{row.value}</span>
+              <span style={{ color: "var(--text-secondary)" }}>{row.label}</span>
+              <span className={row.accent ? "font-semibold text-orange-500" : ""} style={row.accent ? {} : { color: "var(--text-primary)" }}>{row.value}</span>
             </div>
           ))}
         </div>
@@ -266,7 +266,7 @@ function EditSelect({ value, onChange, options }: {
 
 function SubSectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-medium text-slate-500 mb-3 mt-5 first:mt-0">{children}</div>
+    <div className="text-xs font-medium mb-3 mt-5 first:mt-0" style={{ color: "var(--text-secondary)" }}>{children}</div>
   );
 }
 
@@ -281,7 +281,8 @@ function RowEditor({ left, middle, right, onDelete }: {
       <div>{right}</div>
       <button
         onClick={onDelete}
-        className="mt-1 p-1.5 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-all"
+        className="mt-1 p-1.5 rounded-lg transition-all hover:text-red-400"
+        style={{ color: "var(--text-secondary)" }}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -308,9 +309,13 @@ function InputModeTabs({ mode, onChange }: { mode: InputMode; onChange: (m: Inpu
           onClick={() => onChange(t.id)}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
             mode === t.id
-              ? "bg-orange-50 border-orange-200 text-orange-600"
-              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+              ? "text-orange-500 border-orange-500/40"
+              : "hover:border-orange-500/30"
           }`}
+          style={mode === t.id
+            ? { background: "rgba(249,115,22,0.10)", borderColor: "rgba(249,115,22,0.35)" }
+            : { background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-secondary)" }
+          }
         >
           {t.icon} {t.label}
         </button>
@@ -345,7 +350,7 @@ function PasteEntry({
   if (parsed) {
     return (
       <div>
-        <div className="text-xs font-medium text-slate-600 mb-3">
+        <div className="text-xs font-medium mb-3" style={{ color: "var(--text-secondary)" }}>
           {parsed.length} {label.toLowerCase()} detected — review before saving
         </div>
         <div className="space-y-2 mb-4">
@@ -393,7 +398,7 @@ function PasteEntry({
 
   return (
     <div>
-      <p className="text-xs text-slate-500 mb-2">
+      <p className="text-xs mb-2" style={{ color: "var(--text-secondary)" }}>
         Paste from Excel, Google Sheets, or WhatsApp — one per line.
         {isSip ? " Format: Fund name then monthly amount." : " Format: Name then current value."}
         {" "}Commas, tabs, or spaces all work. Supports ₹85k, 1.5L, 1Cr shorthand.
@@ -479,9 +484,9 @@ function CsvEntry({
         </div>
         <div className="space-y-1.5 mb-4">
           {preview.map((r, i) => (
-            <div key={i} className="flex justify-between text-sm px-3 py-2 bg-slate-50 rounded-lg">
-              <span className="text-ink font-medium">{r.name}</span>
-              <span className="text-slate-500">{formatINR(parseFloat(r.value) || 0)}</span>
+            <div key={i} className="flex justify-between text-sm px-3 py-2 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>{r.name}</span>
+              <span style={{ color: "var(--text-secondary)" }}>{formatINR(parseFloat(r.value) || 0)}</span>
             </div>
           ))}
           {total > 3 && (
@@ -540,14 +545,15 @@ function CsvEntry({
 
   return (
     <div>
-      <p className="text-xs text-slate-500 mb-3">
+      <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
         Upload your broker export or your own spreadsheet.
         Supported: Zerodha, Groww, Kuvera, INDmoney, or any CSV/Excel.
       </p>
       <label
         className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${
-          dragging ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-300"
+          dragging ? "border-orange-400" : "hover:border-orange-500/40"
         }`}
+        style={{ borderColor: dragging ? undefined : "var(--border)", background: dragging ? "rgba(249,115,22,0.08)" : "var(--bg-secondary)" }}
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
@@ -561,8 +567,8 @@ function CsvEntry({
         ) : (
           <>
             <span className="text-2xl mb-2">📁</span>
-            <span className="text-sm font-medium text-slate-600">Drop file here or click to upload</span>
-            <span className="text-xs text-slate-400 mt-1">.csv and .xlsx · max 5MB</span>
+            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Drop file here or click to upload</span>
+            <span className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>.csv and .xlsx · max 5MB</span>
           </>
         )}
       </label>
@@ -799,17 +805,18 @@ function PrivacyBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-5">
-      <span className="text-slate-400 mt-0.5">🔒</span>
-      <div className="flex-1 text-xs text-slate-600 leading-relaxed">
-        <strong className="text-slate-700">Your data is private and encrypted.</strong>{" "}
+    <div className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+      <span className="mt-0.5" style={{ color: "var(--text-secondary)" }}>🔒</span>
+      <div className="flex-1 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        <strong style={{ color: "var(--text-primary)" }}>Your data is private and encrypted.</strong>{" "}
         We never store PAN, Aadhaar, or broker credentials.
         You can delete everything from{" "}
         <Link href="/settings" className="underline hover:no-underline">Settings → Delete account</Link>.
       </div>
       <button
         onClick={dismiss}
-        className="text-slate-400 hover:text-slate-600 text-lg leading-none ml-2 flex-shrink-0"
+        className="text-lg leading-none ml-2 flex-shrink-0 hover:opacity-70"
+        style={{ color: "var(--text-secondary)" }}
         aria-label="Dismiss"
       >
         ×
@@ -976,16 +983,16 @@ export default function PortfolioClient({
       {/* Breadcrumb + page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <div className="flex items-center gap-2 text-sm text-slate-400 mb-1">
-            <Link href="/dashboard" className="hover:text-slate-600 transition-colors">Dashboard</Link>
+          <div className="flex items-center gap-2 text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
+            <Link href="/dashboard" className="hover:opacity-80 transition-opacity" style={{ color: "var(--text-secondary)" }}>Dashboard</Link>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-slate-600 font-medium">Portfolio</span>
+            <span className="font-medium" style={{ color: "var(--text-primary)" }}>Portfolio</span>
           </div>
-          <h1 className="text-2xl font-bold text-ink">My Portfolio</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>My Portfolio</h1>
           {snapshotDate && (
-            <p className="text-sm text-slate-400 mt-0.5">
+            <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
               Last updated:{" "}
               {new Date(snapshotDate).toLocaleDateString("en-IN", {
                 day: "numeric", month: "long", year: "numeric",
@@ -1012,7 +1019,7 @@ export default function PortfolioClient({
       <SubNav tabs={PORTFOLIO_TABS} active={activeTab} onChange={setActiveTab} />
 
       {error && (
-        <div className="mt-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div className="mt-4 rounded-xl text-sm px-4 py-3 text-red-400" style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)" }}>
           {error}
         </div>
       )}
@@ -1134,7 +1141,7 @@ function ViewMode({ profile, holdings, activeTab }: {
           )}
 
           <SubSectionTitle>Gold &amp; cash</SubSectionTitle>
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
             <InfoRow label="Physical gold"       value={goldPhysical ? formatINR(goldPhysical.value_inr) : "—"} />
             <InfoRow label="Gold ETF / SGB"      value={goldEtf      ? formatINR(goldEtf.value_inr)      : "—"} />
             <InfoRow label="FD / Emergency fund" value={fd           ? formatINR(fd.value_inr)           : "—"} />
@@ -1184,7 +1191,7 @@ function ViewMode({ profile, holdings, activeTab }: {
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[360px]">
             <thead>
-              <tr className="text-xs text-slate-400 border-b border-slate-100">
+              <tr className="text-xs border-b" style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}>
                 <th className="text-left py-2 pr-4 font-medium">Investment</th>
                 <th className="text-left py-2 pr-4 font-medium">Type</th>
                 <th className="text-right py-2 font-medium">Amount / month</th>
@@ -1192,23 +1199,23 @@ function ViewMode({ profile, holdings, activeTab }: {
             </thead>
             <tbody>
               {sips.map((h, i) => (
-                <tr key={h.id || i} className="border-b border-slate-50">
-                  <td className="py-2.5 pr-4 font-medium text-ink">{h.name.replace(/^SIP: /, "")}</td>
-                  <td className="py-2.5 pr-4 text-slate-500">{SIP_TYPE_LABELS[parseNotes(h.notes, "type")] || "SIP"}</td>
-                  <td className="py-2.5 text-right text-ink">{formatINR(h.monthly_contribution || 0)}</td>
+                <tr key={h.id || i} className="border-b" style={{ borderColor: "var(--border)" }}>
+                  <td className="py-2.5 pr-4 font-medium" style={{ color: "var(--text-primary)" }}>{h.name.replace(/^SIP: /, "")}</td>
+                  <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>{SIP_TYPE_LABELS[parseNotes(h.notes, "type")] || "SIP"}</td>
+                  <td className="py-2.5 text-right" style={{ color: "var(--text-primary)" }}>{formatINR(h.monthly_contribution || 0)}</td>
                 </tr>
               ))}
-              <tr className="border-b border-slate-50">
-                <td className="py-2.5 pr-4 text-slate-600" colSpan={2}>US stock monthly investment</td>
-                <td className="py-2.5 text-right text-ink">{usMo > 0 ? formatINR(usMo) : "—"}</td>
+              <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                <td className="py-2.5 pr-4" colSpan={2} style={{ color: "var(--text-secondary)" }}>US stock monthly investment</td>
+                <td className="py-2.5 text-right" style={{ color: "var(--text-primary)" }}>{usMo > 0 ? formatINR(usMo) : "—"}</td>
               </tr>
-              <tr className="border-b border-slate-50">
-                <td className="py-2.5 pr-4 text-slate-600" colSpan={2}>Indian stock monthly investment</td>
-                <td className="py-2.5 text-right text-ink">{indianMo > 0 ? formatINR(indianMo) : "—"}</td>
+              <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                <td className="py-2.5 pr-4" colSpan={2} style={{ color: "var(--text-secondary)" }}>Indian stock monthly investment</td>
+                <td className="py-2.5 text-right" style={{ color: "var(--text-primary)" }}>{indianMo > 0 ? formatINR(indianMo) : "—"}</td>
               </tr>
               <tr>
-                <td className="py-2.5 pr-4 font-bold text-ink" colSpan={2}>Total monthly</td>
-                <td className="py-2.5 text-right font-bold text-orange-600">{formatINR(totalMonthly)}</td>
+                <td className="py-2.5 pr-4 font-bold" colSpan={2} style={{ color: "var(--text-primary)" }}>Total monthly</td>
+                <td className="py-2.5 text-right font-bold text-orange-500">{formatINR(totalMonthly)}</td>
               </tr>
             </tbody>
           </table>
@@ -1231,7 +1238,7 @@ function HoldingTable({ headers, rows }: { headers: string[]; rows: string[][] }
     <div className="overflow-x-auto mb-4">
       <table className="w-full text-sm min-w-[380px]">
         <thead>
-          <tr className="text-xs text-slate-400 border-b border-slate-100">
+          <tr className="text-xs border-b" style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}>
             {headers.map((h, i) => (
               <th key={i} className={`py-2 font-medium ${i === 0 ? "text-left pr-4" : i === headers.length - 1 ? "text-right" : "text-left pr-4"}`}>{h}</th>
             ))}
@@ -1239,9 +1246,10 @@ function HoldingTable({ headers, rows }: { headers: string[]; rows: string[][] }
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-slate-50 last:border-0">
+            <tr key={ri} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
               {row.map((cell, ci) => (
-                <td key={ci} className={`py-2.5 ${ci === 0 ? "pr-4 font-medium text-ink" : ci === row.length - 1 ? "text-right text-slate-700" : "pr-4 text-slate-500"}`}>
+                <td key={ci} className={`py-2.5 ${ci === 0 ? "pr-4 font-medium" : ci === row.length - 1 ? "text-right" : "pr-4"}`}
+                  style={{ color: ci === 0 ? "var(--text-primary)" : "var(--text-secondary)" }}>
                   {cell}
                 </td>
               ))}

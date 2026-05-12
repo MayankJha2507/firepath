@@ -36,7 +36,7 @@ export default async function Portfolio() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
       <main className="lg:ml-[220px] pt-14">
         <div className="max-w-5xl mx-auto px-6 py-8">
