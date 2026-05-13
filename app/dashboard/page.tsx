@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import {
-  formatINR, milestoneProjections, yearByYearProjection,
+  formatINR, milestoneProjections,
   fireCorpusTarget, inflationAdjustedExpense,
   equityProjection, epfProjection, ppfProjection, npsProjection,
   fireBridgeAnalysis,
@@ -9,12 +9,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import MilestoneToast from "@/components/MilestoneToast";
 import AllocationDonut from "@/components/charts/AllocationDonut";
-import ProjectionChart from "@/components/charts/ProjectionChart";
+import ProjectionCard from "@/components/charts/ProjectionCard";
 import CorpusBarChart from "@/components/charts/CorpusBarChart";
 import SideNav from "@/components/layout/SideNav";
 import DataQualityBadge, { computeCompleteness } from "@/components/ui/DataQualityBadge";
 import type { DataQuality } from "@/components/ui/DataQualityBadge";
 import FireStatusBanner, { type BannerState } from "@/components/ui/FireStatusBanner";
+import { CorpusBreakdownPopover } from "@/components/ui/CorpusBreakdownPopover";
 
 const DEV_PROFILE = {
   id: "dev", full_name: "Dev User", age: 30, fire_target_age: 45,
@@ -74,11 +75,31 @@ export default async function Dashboard() {
     }
   }
 
+  let latestAnalysis: { generated_at: string } | null = null;
+  if (snap && (profile?.tier === "pro" || bypassProGate)) {
+    const { data: analysis } = await supabase
+      .from("ai_analyses")
+      .select("generated_at")
+      .eq("user_id", user?.id ?? "")
+      .eq("snapshot_id", snap.id)
+      .order("generated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    latestAnalysis = analysis;
+  }
+
   const isDevMock = isDev && !user;
   if (!profile) profile = DEV_PROFILE;
   if (!snap && isDevMock) { snap = DEV_SNAP; holdings = DEV_HOLDINGS; }
 
   const isPro = profile.tier === "pro" || bypassProGate;
+
+  // Holdings summed by category for corpus popover breakdowns
+  const holdingsByCategory = holdings.reduce((acc: Record<string, number>, h: any) => {
+    acc[h.category] = (acc[h.category] ?? 0) + (h.value_inr || 0);
+    return acc;
+  }, {} as Record<string, number>);
+
   const dc: Record<string, string> = profile.data_completeness || {};
   const completenessRaw = Object.keys(dc).length > 0 ? dc : null;
 
@@ -107,10 +128,6 @@ export default async function Dashboard() {
 
   const inflAdj = inflationAdjustedExpense(profile.fire_monthly_expense || profile.monthly_expense || 60000, yearsToFire);
   const fireTarget = fireCorpusTarget(inflAdj);
-  const projData = yearByYearProjection(
-    snap.liquid_corpus, monthlyInvest, Math.min(yearsToFire + 10, 35),
-    fireTarget, 0.12, profile.age || 30
-  );
 
   const epfHolding = holdings.find((h: any) => h.category === "epf");
   const ppfHolding = holdings.find((h: any) => h.category === "ppf");
@@ -194,8 +211,29 @@ export default async function Dashboard() {
 
           {/* Row 1 — Metric cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard label="Total corpus"   value={formatINR(snap.total_corpus)}  sub="All holdings combined" accent="orange" quality={corpusQuality} />
-            <MetricCard label="Liquid corpus"  value={formatINR(snap.liquid_corpus)} sub={`${((snap.liquid_corpus / snap.total_corpus) * 100 || 0).toFixed(0)}% of total`} accent="blue" quality={corpusQuality} />
+            <CorpusBreakdownPopover
+              variant="total"
+              total={snap.total_corpus}
+              items={[
+                { label: "Liquid", value: snap.liquid_corpus, pct: snap.total_corpus ? (snap.liquid_corpus / snap.total_corpus) * 100 : 0 },
+                { label: "Locked (EPF + NPS + PPF)", value: snap.locked_corpus, pct: snap.total_corpus ? (snap.locked_corpus / snap.total_corpus) * 100 : 0 },
+              ].filter(item => item.value > 0)}
+            >
+              <MetricCard label="Total corpus" value={formatINR(snap.total_corpus)} sub="All holdings combined" accent="orange" quality={corpusQuality} />
+            </CorpusBreakdownPopover>
+            <CorpusBreakdownPopover
+              variant="liquid"
+              total={snap.liquid_corpus}
+              items={[
+                { label: "Indian stocks", value: holdingsByCategory["indian_stock"] ?? 0, pct: snap.liquid_corpus ? ((holdingsByCategory["indian_stock"] ?? 0) / snap.liquid_corpus) * 100 : 0 },
+                { label: "US stocks",     value: holdingsByCategory["us_stock"] ?? 0,     pct: snap.liquid_corpus ? ((holdingsByCategory["us_stock"] ?? 0) / snap.liquid_corpus) * 100 : 0 },
+                { label: "Mutual funds",  value: holdingsByCategory["mf"] ?? 0,           pct: snap.liquid_corpus ? ((holdingsByCategory["mf"] ?? 0) / snap.liquid_corpus) * 100 : 0 },
+                { label: "Gold",          value: holdingsByCategory["gold"] ?? 0,         pct: snap.liquid_corpus ? ((holdingsByCategory["gold"] ?? 0) / snap.liquid_corpus) * 100 : 0 },
+                { label: "FD / Emergency",value: holdingsByCategory["fd"] ?? 0,           pct: snap.liquid_corpus ? ((holdingsByCategory["fd"] ?? 0) / snap.liquid_corpus) * 100 : 0 },
+              ].filter(item => item.value > 0)}
+            >
+              <MetricCard label="Liquid corpus" value={formatINR(snap.liquid_corpus)} sub={`${((snap.liquid_corpus / snap.total_corpus) * 100 || 0).toFixed(0)}% of total`} accent="blue" quality={corpusQuality} />
+            </CorpusBreakdownPopover>
             <MetricCard label="FIRE target"    value={formatINR(fireTarget)}          sub={`At age ${profile.fire_target_age || 45}`} accent="violet" quality={expenseQuality} />
             <MetricCard label="Projected FIRE" value={`Age ${snap.projected_fire_age?.toFixed(0) ?? "—"}`} sub={fireDateDiff !== null ? fireDateStatus(fireDateDiff) : ""} accent="green" fireDiff={fireDateDiff} quality={corpusQuality} />
           </div>
@@ -228,19 +266,16 @@ export default async function Dashboard() {
           </div>
 
           {/* Row 3 — Year-by-year projection */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="section-title">Corpus projection</div>
-                {completenessRaw && <DataQualityBadge quality={corpusQuality} linkTo="/portfolio" />}
-              </div>
-              <div className="flex items-center gap-4 text-xs text-slate-500">
-                <span><span className="inline-block w-3 h-0.5 bg-orange-400 mr-1 align-middle" />Your trajectory</span>
-                <span><span className="inline-block w-3 h-0.5 bg-blue-400 mr-1 align-middle border-dashed border-t-2" />FIRE target</span>
-              </div>
-            </div>
-            <ProjectionChart data={projData} fireAge={snap.projected_fire_age} />
-          </div>
+          <ProjectionCard
+            liquidCorpus={snap.liquid_corpus}
+            monthlySIP={monthlyInvest}
+            yearsWindow={Math.min(yearsToFire + 10, 35)}
+            fireTarget={fireTarget}
+            startAge={profile.age || 30}
+            projectedFireAge={snap.projected_fire_age ?? null}
+            corpusQuality={corpusQuality}
+            showQuality={!!completenessRaw}
+          />
 
           {/* Row 4 — Milestones + savings gauge */}
           <div className="grid md:grid-cols-3 gap-4">
@@ -301,7 +336,7 @@ export default async function Dashboard() {
           )}
 
           {/* Row 5 — AI analysis preview */}
-          <AIPreviewCard isPro={isPro} />
+          <AIPreviewCard isPro={isPro} latestAnalysis={latestAnalysis} />
 
           <p className="disclaimer pb-4">
             For educational purposes only. Not SEBI-registered investment advice.
@@ -319,6 +354,12 @@ function fireDateStatus(diffMonths: number): string {
   if (Math.abs(diffMonths) < 3) return "On track";
   if (diffMonths > 0) return `${Math.round(diffMonths)}mo ahead of plan`;
   return `${Math.round(Math.abs(diffMonths))}mo behind plan`;
+}
+
+function milestoneCalendarYear(monthsFromNow: number): number {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth() + Math.round(monthsFromNow), 1);
+  return target.getFullYear();
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────
@@ -353,16 +394,16 @@ function MilestoneCard({ label, months, estimated }: { label: string; months: nu
   const unreachable = !isFinite(months);
   return (
     <div
-      className="rounded-xl p-3 text-center"
+      className="rounded-xl p-4 text-center"
       style={{
         border: "1px solid var(--border)",
         background: achieved ? "rgba(74,222,128,0.08)" : "var(--bg-secondary)",
       }}
     >
-      <div className="font-semibold text-sm" style={{ color: achieved ? "var(--success)" : "var(--text-primary)" }}>
+      <div className="text-lg font-semibold" style={{ color: achieved ? "var(--success)" : "var(--text-primary)" }}>
         {label}
       </div>
-      <div className="text-xs mt-1 flex items-center justify-center gap-1" style={{ color: achieved ? "var(--success)" : "var(--text-secondary)" }}>
+      <div className="text-sm mt-1 flex items-center justify-center gap-1" style={{ color: achieved ? "var(--success)" : "var(--text-secondary)" }}>
         {achieved ? "✓ Achieved"
           : unreachable ? "Increase SIPs"
           : months < 12 ? `${months}mo`
@@ -371,6 +412,16 @@ function MilestoneCard({ label, months, estimated }: { label: string; months: nu
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
         )}
       </div>
+      {!achieved && !unreachable && (
+        <div className="text-xs font-medium mt-0.5" style={{ color: "var(--orange)" }}>
+          by {milestoneCalendarYear(months)}
+        </div>
+      )}
+      {achieved && (
+        <div className="text-xs font-medium mt-0.5" style={{ color: "var(--success)" }}>
+          ✓ Already crossed
+        </div>
+      )}
     </div>
   );
 }
@@ -388,7 +439,17 @@ function SavingsGauge({ pct }: { pct: number }) {
   );
 }
 
-function AIPreviewCard({ isPro }: { isPro: boolean }) {
+function AIPreviewCard({
+  isPro,
+  latestAnalysis,
+}: {
+  isPro: boolean;
+  latestAnalysis: { generated_at: string } | null;
+}) {
+  const updatedDate = latestAnalysis
+    ? new Date(latestAnalysis.generated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+    : null;
+
   return (
     <div className="card relative overflow-hidden">
       <div className="flex items-center justify-between mb-3">
@@ -405,10 +466,27 @@ function AIPreviewCard({ isPro }: { isPro: boolean }) {
             🤖
           </div>
           <div>
-            <div className="font-semibold" style={{ color: "var(--text-primary)" }}>Your analysis is ready</div>
+            <div className="font-semibold" style={{ color: "var(--text-primary)" }}>
+              {latestAnalysis ? "Your analysis is ready" : "Analysing your portfolio..."}
+            </div>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
               Get your health score, action items, and FIRE feasibility verdict.
             </p>
+            <div className="mt-2">
+              {updatedDate ? (
+                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                  Updated {updatedDate}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--warning)" }}>
+                  <div
+                    className="w-3 h-3 rounded-full border animate-spin"
+                    style={{ borderColor: "var(--warning)", borderTopColor: "transparent" }}
+                  />
+                  Updating analysis...
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (

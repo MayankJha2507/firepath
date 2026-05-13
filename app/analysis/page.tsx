@@ -19,6 +19,19 @@ export default async function Analysis() {
 
   const isUnlocked = tier === "pro" || bypassProGate;
 
+  // Fetch latest snapshot so AnalysisClient can show correct states
+  let latestSnapshot: { id: string; snapshot_date: string } | null = null;
+  if (user && isUnlocked) {
+    const { data: snap } = await supabase
+      .from("portfolio_snapshots")
+      .select("id, snapshot_date")
+      .eq("user_id", user.id)
+      .order("snapshot_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    latestSnapshot = snap;
+  }
+
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <SideNav />
@@ -32,12 +45,12 @@ export default async function Analysis() {
                 <div className="text-4xl mb-4">🤖</div>
                 <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>AI analysis is a Pro feature</h2>
                 <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
-                  Get your portfolio health score, strengths, concerns, and concrete action items — powered by Gemini.
+                  Get your portfolio health score, strengths, concerns, and concrete action items — powered by Groq AI.
                 </p>
                 <button className="btn-primary px-8">Upgrade to Pro — ₹499/mo</button>
               </div>
             ) : (
-              <AnalysisClient />
+              <AnalysisClient latestSnapshot={latestSnapshot} />
             )}
           </ErrorBoundary>
           <p className="disclaimer mt-8">For educational purposes only. Not SEBI-registered investment advice.</p>

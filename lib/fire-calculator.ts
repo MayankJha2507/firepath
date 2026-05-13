@@ -133,3 +133,220 @@ export function formatINR(n: number): string {
   if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
+
+// ─── detailed breakdown types ─────────────────────────────────────────────
+
+export interface YearlyValue {
+  age: number;
+  value: number;
+}
+
+export interface ThreeScenario {
+  age: number;
+  conservative: number;
+  base: number;
+  optimistic: number;
+}
+
+// ─── detailed breakdown functions ─────────────────────────────────────────
+
+export function epfBreakdown(
+  currentValue: number,
+  yourMonthly: number,
+  employerMonthly: number,
+  currentAge: number,
+  retirementAge: number,
+  rate = 0.0825
+): {
+  currentBalance: number;
+  yourFutureContributions: number;
+  employerFutureContributions: number;
+  interestEarned: number;
+  totalAtRetirement: number;
+  growthMultiple: number;
+  yearByYear: YearlyValue[];
+} {
+  const years = Math.max(0, retirementAge - currentAge);
+  const monthlyTotal = yourMonthly + employerMonthly;
+  let balance = currentValue;
+  const yearByYear: YearlyValue[] = [];
+  let yourContribs = 0;
+  let employerContribs = 0;
+
+  for (let y = 0; y < years; y++) {
+    yourContribs += yourMonthly * 12;
+    employerContribs += employerMonthly * 12;
+    balance = (balance + monthlyTotal * 12) * (1 + rate);
+    yearByYear.push({ age: currentAge + y + 1, value: balance });
+  }
+
+  return {
+    currentBalance: currentValue,
+    yourFutureContributions: yourContribs,
+    employerFutureContributions: employerContribs,
+    interestEarned: balance - currentValue - yourContribs - employerContribs,
+    totalAtRetirement: balance,
+    growthMultiple: currentValue > 0 ? balance / currentValue : 0,
+    yearByYear,
+  };
+}
+
+export function npsBreakdown(
+  currentValue: number,
+  monthlyContrib: number,
+  currentAge: number,
+  retirementAge: number,
+  rate = 0.105
+): {
+  atRetirement: number;
+  at60: number;
+  lumpsum60: number;
+  annuityCorpus: number;
+  monthlyAnnuity: number;
+  futureContributions: number;
+  returnsEarned: number;
+  yearByYear: YearlyValue[];
+} {
+  const years = Math.max(0, retirementAge - currentAge);
+  let balance = currentValue;
+  let contribs = 0;
+  const yearByYear: YearlyValue[] = [];
+
+  for (let y = 0; y < years; y++) {
+    contribs += monthlyContrib * 12;
+    balance = (balance + monthlyContrib * 12) * (1 + rate);
+    yearByYear.push({ age: currentAge + y + 1, value: balance });
+  }
+  const atRetirement = balance;
+
+  const yearsTo60 = Math.max(0, 60 - retirementAge);
+  for (let y = 0; y < yearsTo60; y++) {
+    balance = balance * (1 + rate);
+    yearByYear.push({ age: retirementAge + y + 1, value: balance });
+  }
+
+  const at60 = balance;
+  const lumpsum60 = at60 * 0.6;
+  const annuityCorpus = at60 * 0.4;
+
+  return {
+    atRetirement,
+    at60,
+    lumpsum60,
+    annuityCorpus,
+    monthlyAnnuity: annuityCorpus * 0.005,
+    futureContributions: contribs,
+    returnsEarned: at60 - currentValue - contribs,
+    yearByYear,
+  };
+}
+
+export function ppfBreakdown(
+  currentValue: number,
+  monthlyContrib: number,
+  currentAge: number,
+  yearsToMaturity: number,
+  rate = 0.071
+): {
+  atMaturity: number;
+  yourContributions: number;
+  interestEarned: number;
+  maturityAge: number;
+  maturityYear: number;
+  growthMultiple: number;
+  yearByYear: YearlyValue[];
+} {
+  const years = Math.max(0, yearsToMaturity);
+  let balance = currentValue;
+  let contribs = 0;
+  const yearByYear: YearlyValue[] = [];
+
+  for (let y = 0; y < years; y++) {
+    contribs += monthlyContrib * 12;
+    balance = (balance + monthlyContrib * 12) * (1 + rate);
+    yearByYear.push({ age: currentAge + y + 1, value: balance });
+  }
+
+  return {
+    atMaturity: balance,
+    yourContributions: contribs,
+    interestEarned: balance - currentValue - contribs,
+    maturityAge: currentAge + yearsToMaturity,
+    maturityYear: new Date().getFullYear() + yearsToMaturity,
+    growthMultiple: currentValue > 0 ? balance / currentValue : 0,
+    yearByYear,
+  };
+}
+
+export function equityBreakdown(
+  currentValue: number,
+  monthlyInvestment: number,
+  currentAge: number,
+  retirementAge: number
+): {
+  conservative: number;
+  base: number;
+  optimistic: number;
+  contributions: number;
+  returnsBase: number;
+  growthMultipleBase: number;
+  yearByYear: ThreeScenario[];
+} {
+  const years = Math.max(0, retirementAge - currentAge);
+  const rates = [0.10, 0.12, 0.15];
+  const results = rates.map(rate => {
+    let balance = currentValue;
+    const yearly: number[] = [];
+    for (let y = 0; y < years; y++) {
+      balance = (balance + monthlyInvestment * 12) * (1 + rate);
+      yearly.push(balance);
+    }
+    return { final: balance, yearly };
+  });
+
+  const contribs = monthlyInvestment * 12 * years;
+  const yearByYear: ThreeScenario[] = results[0].yearly.map((_, i) => ({
+    age: currentAge + i + 1,
+    conservative: results[0].yearly[i],
+    base: results[1].yearly[i],
+    optimistic: results[2].yearly[i],
+  }));
+
+  return {
+    conservative: results[0].final,
+    base: results[1].final,
+    optimistic: results[2].final,
+    contributions: contribs,
+    returnsBase: results[1].final - currentValue - contribs,
+    growthMultipleBase: currentValue > 0 ? results[1].final / currentValue : 0,
+    yearByYear,
+  };
+}
+
+export function goldBreakdown(
+  currentValue: number,
+  currentAge: number,
+  retirementAge: number,
+  rate = 0.08
+): {
+  atRetirement: number;
+  returnsEarned: number;
+  growthMultiple: number;
+  yearByYear: YearlyValue[];
+} {
+  const years = Math.max(0, retirementAge - currentAge);
+  let balance = currentValue;
+  const yearByYear: YearlyValue[] = [];
+
+  for (let y = 0; y < years; y++) {
+    balance = balance * (1 + rate);
+    yearByYear.push({ age: currentAge + y + 1, value: balance });
+  }
+
+  return {
+    atRetirement: balance,
+    returnsEarned: balance - currentValue,
+    growthMultiple: currentValue > 0 ? balance / currentValue : 0,
+    yearByYear,
+  };
+}
