@@ -86,5 +86,18 @@ export async function POST(req: Request) {
     body: JSON.stringify({ snapshot_id: snap.id }),
   }).catch(() => {});
 
+  // Background analysis pre-generation
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    fetch(`${appUrl}/api/analyse`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": req.headers.get("cookie") ?? "",
+      },
+      body: JSON.stringify({ snapshotId: snap.id }),
+    }).catch(err => console.error("Background analysis failed:", err));
+  }
+
   return NextResponse.json({ snapshot: snap, target, projectedAt });
 }

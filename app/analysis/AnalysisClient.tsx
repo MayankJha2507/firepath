@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface Analysis {
   health_score: number;
@@ -25,6 +26,10 @@ interface Analysis {
   disclaimer: string;
 }
 
+interface Props {
+  latestSnapshot: { id: string; snapshot_date: string } | null;
+}
+
 const VERDICT_CONFIG = {
   on_track:   { label: "On track 🎯",   cls: "badge-green" },
   close:      { label: "Close 📊",      cls: "badge-amber" },
@@ -43,62 +48,107 @@ function scoreColor(s: number) {
   return           { ring: "ring-red-400",         text: "text-red-400",     bg: "rgba(239,68,68,0.10)"  };
 }
 
-export default function AnalysisClient() {
+export default function AnalysisClient({ latestSnapshot }: Props) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cached, setCached]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
 
-  async function fetchAnalysis(force = false) {
-    setLoading(true); setError(null); setQuotaExceeded(false);
+  async function fetchAnalysis(): Promise<Analysis | null> {
     try {
       const res = await fetch("/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({}),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Analysis failed. Please try again.");
-      setAnalysis(json.analysis);
-      setCached(json.cached ?? false);
-      setQuotaExceeded(json.quota_exceeded ?? false);
-    } catch (e: any) {
-      setError(e.message || "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      if (!res.ok) return null;
+      if (json.quota_exceeded) setQuotaExceeded(true);
+      return json.analysis ?? null;
+    } catch {
+      return null;
     }
   }
 
-  useEffect(() => { fetchAnalysis(); }, []);
+  useEffect(() => {
+    if (!analysis && latestSnapshot) {
+      // Immediate first fetch
+      fetchAnalysis().then(result => { if (result) setAnalysis(result); });
 
-  if (loading) return (
-    <div className="space-y-4">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="card animate-pulse">
-          <div className="h-3 rounded w-1/3 mb-3" style={{ background: "var(--border)" }} />
-          <div className="space-y-2">
-            <div className="h-3 rounded w-full"  style={{ background: "var(--border)" }} />
-            <div className="h-3 rounded w-4/5"   style={{ background: "var(--border)" }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+      let timeout: ReturnType<typeof setTimeout>;
 
-  if (error) return (
-    <div className="card text-center py-8" style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.08)" }}>
-      <div className="text-2xl mb-2">⚠️</div>
-      <div className="font-semibold mb-1" style={{ color: "var(--danger)" }}>Couldn't load analysis</div>
-      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>{error}</p>
-      <button onClick={() => fetchAnalysis()} className="btn-primary text-sm">Try again</button>
-    </div>
-  );
+      const interval = setInterval(async () => {
+        try {
+          const result = await fetchAnalysis();
+          if (result) {
+            setAnalysis(result);
+            clearInterval(interval);
+            clearTimeout(timeout);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 3000);
 
-  if (!analysis) return null;
+      timeout = setTimeout(() => {
+        clearInterval(interval);
+        setError(
+          "Analysis is taking longer than expected. " +
+          "Edit and save your portfolio to retry."
+        );
+      }, 60000);
 
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [analysis, latestSnapshot]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // State 1 — no portfolio yet
+  if (!latestSnapshot) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          Add your portfolio first
+        </p>
+        <Link
+          href="/portfolio"
+          className="text-sm font-medium"
+          style={{ color: "var(--orange)" }}
+        >
+          Set up portfolio →
+        </Link>
+      </div>
+    );
+  }
+
+  // State 2 — analysis generating (show spinner + poll)
+  if (!analysis) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <div
+          className="w-8 h-8 rounded-full border-2 animate-spin"
+          style={{ borderColor: "var(--orange)", borderTopColor: "transparent" }}
+        />
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          Analysing your portfolio...
+        </p>
+        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+          Usually takes 5–10 seconds
+        </p>
+        {error && (
+          <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  // State 3 — analysis ready
   const sc = scoreColor(analysis.health_score);
   const vc = VERDICT_CONFIG[analysis.fire_feasibility.verdict];
+  const snapshotDate = new Date(latestSnapshot.snapshot_date).toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
 
   return (
     <div className="space-y-4">
@@ -106,8 +156,8 @@ export default function AnalysisClient() {
         <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)" }}>
           <span className="text-amber-400 flex-shrink-0">⚠️</span>
           <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-            <strong>Gemini quota exceeded</strong>{" "}
-            <span style={{ color: "var(--text-secondary)" }}>— showing a sample analysis. Add a paid Gemini API key to enable live analysis.</span>
+            <strong>Groq API quota exceeded</strong>{" "}
+            <span style={{ color: "var(--text-secondary)" }}>— showing a sample analysis. Check your GROQ_API_KEY in environment variables.</span>
           </p>
         </div>
       )}
@@ -121,16 +171,27 @@ export default function AnalysisClient() {
           <span className={`text-2xl font-bold ${sc.text}`}>{analysis.health_score}</span>
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/100</span>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="font-semibold text-lg leading-snug" style={{ color: "var(--text-primary)" }}>{analysis.headline}</div>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className={vc.cls}>{vc.label}</span>
-            {cached && <span className="badge-blue">Cached · &lt;30d old</span>}
           </div>
         </div>
-        <button onClick={() => fetchAnalysis(true)} className="btn-secondary text-xs flex-shrink-0">
-          ↺ Regenerate
-        </button>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-xs hidden sm:inline" style={{ color: "var(--text-secondary)" }}>
+            Reflects your {snapshotDate} portfolio
+          </span>
+          <Link
+            href="/portfolio"
+            className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-opacity whitespace-nowrap"
+            style={{ color: "var(--orange)" }}
+          >
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Edit portfolio to refresh
+          </Link>
+        </div>
       </div>
 
       {/* Strengths + Concerns */}

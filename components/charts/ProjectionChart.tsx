@@ -2,7 +2,7 @@
 
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ReferenceLine, ResponsiveContainer, Legend,
+  Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
 
 interface DataPoint {
@@ -27,12 +27,19 @@ function crFmt(v: number) {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-lg text-xs">
-      <div className="font-semibold text-slate-700 mb-1.5">Age {label}</div>
+    <div style={{
+      background: "var(--bg-card)",
+      border: "1px solid var(--border)",
+      borderRadius: "12px",
+      color: "var(--text-primary)",
+      padding: "10px 12px",
+      fontSize: 12,
+    }}>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--text-primary)" }}>Age {label}</div>
       {payload.map((p: any) => (
         <div key={p.name} className="flex justify-between gap-4">
           <span style={{ color: p.color }}>{p.name}</span>
-          <span className="font-medium">{crFmt(p.value)}</span>
+          <span style={{ fontWeight: 500 }}>{crFmt(p.value)}</span>
         </div>
       ))}
     </div>
@@ -45,37 +52,33 @@ export default function ProjectionChart({ data, fireAge }: Props) {
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="corpusGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%"  stopColor="#F97316" stopOpacity={0.15} />
-            <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+            <stop offset="5%"  stopColor="var(--orange)" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="var(--orange)" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="targetGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%"  stopColor="#3B82F6" stopOpacity={0.08} />
             <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis
           dataKey="age"
-          tick={{ fontSize: 11, fill: "#94a3b8" }}
+          tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
           tickLine={false} axisLine={false}
         />
         <YAxis
           tickFormatter={crFmt}
-          tick={{ fontSize: 11, fill: "#94a3b8" }}
+          tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
           tickLine={false} axisLine={false}
           width={56}
         />
         <Tooltip content={<CustomTooltip />} />
-        <Legend
-          wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
-          formatter={(v) => <span className="text-slate-600">{v}</span>}
-        />
         {fireAge && (
           <ReferenceLine
             x={fireAge}
-            stroke="#10B981"
+            stroke="var(--success)"
             strokeDasharray="4 3"
-            label={{ value: "FIRE 🎯", position: "top", fontSize: 11, fill: "#10B981" }}
+            label={{ value: "FIRE 🎯", position: "top", fontSize: 11, fill: "var(--success)" }}
           />
         )}
         <Area
@@ -92,11 +95,11 @@ export default function ProjectionChart({ data, fireAge }: Props) {
           type="monotone"
           dataKey="corpus"
           name="Your trajectory"
-          stroke="#F97316"
+          stroke="var(--orange)"
           strokeWidth={2.5}
           fill="url(#corpusGrad)"
           dot={false}
-          activeDot={{ r: 5, fill: "#F97316" }}
+          activeDot={{ r: 5, fill: "var(--orange)" }}
         />
       </AreaChart>
     </ResponsiveContainer>
