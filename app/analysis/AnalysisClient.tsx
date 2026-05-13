@@ -163,7 +163,7 @@ export default function AnalysisClient({ latestSnapshot }: Props) {
       )}
 
       {/* Score + headline */}
-      <div className="card flex items-center gap-6">
+      <div className="card flex items-start gap-6">
         <div
           className={`w-20 h-20 rounded-full ring-4 ${sc.ring} flex flex-col items-center justify-center flex-shrink-0`}
           style={{ background: sc.bg }}
@@ -176,21 +176,21 @@ export default function AnalysisClient({ latestSnapshot }: Props) {
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className={vc.cls}>{vc.label}</span>
           </div>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs hidden sm:inline" style={{ color: "var(--text-secondary)" }}>
-            Reflects your {snapshotDate} portfolio
-          </span>
-          <Link
-            href="/portfolio"
-            className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-opacity whitespace-nowrap"
-            style={{ color: "var(--orange)" }}
-          >
-            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Edit portfolio to refresh
-          </Link>
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              Reflects your {snapshotDate} portfolio
+            </span>
+            <Link
+              href="/portfolio"
+              className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-opacity"
+              style={{ color: "var(--orange)" }}
+            >
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Edit portfolio to refresh
+            </Link>
+          </div>
         </div>
       </div>
 
