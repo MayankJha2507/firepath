@@ -14,5 +14,5 @@ export function applyTheme(theme: Theme) {
 }
 
 export function getStoredTheme(): Theme {
-  return (localStorage.getItem("firepath-theme") as Theme) ?? "system";
+  return (localStorage.getItem("firepath-theme") as Theme) ?? "light";
 }

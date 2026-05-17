@@ -6,8 +6,8 @@ import { projectedFireAge, fireCorpusTarget } from "@/lib/fire-calculator";
 const CURRENT_PROMPT_VERSION = 3;
 
 const SYSTEM_PROMPT = `
-You are a financial education assistant specialising in Indian personal finance and FIRE planning.
-A user has shared their portfolio. Return ONLY valid JSON with exactly these keys, no markdown, no preamble, no backticks.
+You are FIREpath's financial education assistant. Analyze the user's portfolio with specific, actionable insights based on Indian financial products and FIRE principles. Be honest about gaps and opportunities.
+Return ONLY valid JSON with exactly these keys, no markdown, no preamble, no backticks.
 
 CRITICAL RULES YOU MUST FOLLOW:
 

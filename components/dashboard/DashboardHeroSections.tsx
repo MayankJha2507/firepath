@@ -241,7 +241,7 @@ export default function DashboardHeroSections({
         </div>
       </div>
 
-      {/* Section 4 — Networthify savings rate chart */}
+      {/* Section 4 — Savings rate vs years chart */}
       <div
         className="rounded-2xl p-6"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
@@ -255,7 +255,7 @@ export default function DashboardHeroSections({
           </div>
         </div>
         <div className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-          The most important lever for early retirement is not returns — it&apos;s your savings rate
+          The most powerful lever in early retirement isn&apos;t returns — it&apos;s how much of your income you invest
         </div>
 
         <div className="h-48">
@@ -313,6 +313,9 @@ export default function DashboardHeroSections({
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <p className="text-[10px] mt-3" style={{ color: "var(--text-secondary)" }}>
+          Higher savings rates compound faster than any market return. Assumes 5% real return (after inflation) and the 4% safe withdrawal rate.
+        </p>
       </div>
 
       {/* Section 5 — Year-by-year table */}
