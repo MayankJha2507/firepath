@@ -3,21 +3,39 @@
 import Link from "next/link";
 import NriWaitlistForm from "./NriWaitlistForm";
 
+const pillars = [
+  {
+    icon: "🎯",
+    title: "Know your real FIRE date",
+    desc: "Most calculators ignore EPF lock-ins and NPS rules. FIREpath models when each rupee unlocks — so your retirement plan accounts for what you can actually access at 42 vs 60.",
+  },
+  {
+    icon: "📊",
+    title: "See what's actually moving you forward",
+    desc: "Your cash surplus, your portfolio quality, your savings rate — broken down into the specific levers that change your retirement date by years, not days.",
+  },
+  {
+    icon: "📈",
+    title: "Watch your progress, month by month",
+    desc: "Every snapshot you take is saved. See your corpus grow, your FIRE date move closer, and milestones celebrated as they happen.",
+  },
+];
+
 const features = [
   {
     icon: "📊",
     title: "FIRE calculator",
-    desc: "Inflation-adjusted targets using real Indian return assumptions — not US-centric defaults.",
+    desc: "Inflation-adjusted targets using real Indian return assumptions across EPF, NPS, PPF, equities, gold, and FDs.",
   },
   {
     icon: "🔒",
     title: "Locked vs liquid",
-    desc: "EPF, NPS, and PPF lock-in modelled. See what's actually accessible at retirement.",
+    desc: "EPF, NPS, and PPF lock-in modelled accurately. See exactly what you can access at retirement vs what unlocks later.",
   },
   {
     icon: "🤖",
     title: "AI portfolio analysis",
-    desc: "Health score, strengths, concerns, and concrete action items — powered by Gemini.",
+    desc: "Health score, strengths, concerns, and concrete action items — tailored to your actual holdings.",
   },
   {
     icon: "🏆",
@@ -36,21 +54,6 @@ const features = [
   },
 ];
 
-const problems = [
-  {
-    tool: "ProjectionLab",
-    issue: "Built for the US. Doesn't model EPF lock-in, NPS annuity rules, or Indian tax slabs.",
-  },
-  {
-    tool: "Groww / Kuvera",
-    issue: "Great for investing. Zero FIRE planning — no corpus target, no retirement age projection.",
-  },
-  {
-    tool: "Spreadsheets",
-    issue: "Manual, error-prone, and they don't send milestone alerts when you cross ₹1 Cr liquid.",
-  },
-];
-
 const tiers = [
   {
     name: "Explorer",
@@ -58,7 +61,7 @@ const tiers = [
     period: "forever",
     desc: "Get started with the essentials.",
     features: ["1 portfolio snapshot", "Basic FIRE dashboard", "Corpus target calculator"],
-    cta: "Start free",
+    cta: "Start free →",
     href: "/auth",
     highlight: false,
   },
@@ -70,7 +73,7 @@ const tiers = [
     desc: "Everything you need to reach FIRE.",
     features: [
       "Unlimited snapshots + full history",
-      "AI portfolio analysis (Gemini)",
+      "AI portfolio analysis",
       "Milestone alerts",
       "Year-by-year projection charts",
     ],
@@ -118,27 +121,22 @@ export default function Landing() {
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-10 text-center">
         <div className="inline-flex items-center gap-2 bg-orange-500/10 text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-500/20 mb-6">
-          🇮🇳 India-first FIRE planning
+          🇮🇳 Built for Indian investors
         </div>
         <h1 className="text-5xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight mb-6">
-          Plan your retirement.<br />
-          <span className="text-orange-500">The Indian way.</span>
+          Plan your financial independence —<br />
+          <span className="text-orange-500">built for India.</span>
         </h1>
 
-        {/* Revised subtitle */}
-        <p className="text-xl text-white/70 mb-2">
-          Most FIRE tools were built for Americans.
-        </p>
-        <p className="text-xl text-white font-medium mb-4">
-          This one was built for you.
-        </p>
-        <p className="text-sm text-white/40 max-w-lg mx-auto mb-10">
-          EPF lock-in. NPS annuity rules. Indian tax slabs. US stocks. All modelled together.
+        <p className="text-lg text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
+          Track your FIRE journey across EPF, NPS, PPF, stocks, mutual funds, gold, and US holdings.
+          See exactly when you&apos;ll retire, how much you need, and what&apos;s slowing you down.
+          Updated every month.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/auth" className="bg-orange-500 hover:opacity-90 text-white font-medium text-base px-7 py-3 rounded-xl transition-all">
-            Start free — no credit card
+            Start free →
           </Link>
           <button
             onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
@@ -147,7 +145,7 @@ export default function Landing() {
             See how it works ↓
           </button>
         </div>
-        <p className="text-xs text-white/30 mt-4">Free tier available · Pro at ₹499/mo</p>
+        <p className="text-xs text-white/30 mt-4">Takes 90 seconds · No credit card · Your data stays private</p>
 
         {/* ── Hero dashboard mockup ─────────────────────────────────── */}
         <div className="relative mx-auto max-w-4xl mt-14 px-4">
@@ -158,7 +156,7 @@ export default function Landing() {
               <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
               <div className="w-3 h-3 rounded-full bg-green-400/60" />
               <div className="ml-4 flex-1 bg-white/5 rounded px-3 py-1 text-xs text-white/40">
-                firepath-pi.vercel.app/dashboard
+                app.firepath.in/dashboard
               </div>
             </div>
             {/* Dashboard preview */}
@@ -216,22 +214,23 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-yellow-400">★★★★★</span>
-            <span className="text-white/50 italic">"Finally a FIRE tool that understands EPF lock-in"</span>
+            <span className="text-white/50 italic">&ldquo;Finally a FIRE tool that understands EPF lock-in&rdquo;</span>
           </div>
         </div>
       </div>
 
-      {/* ── Problem ────────────────────────────────────────────────── */}
+      {/* ── Value pillars ──────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">The gap in the market</p>
-          <h2 className="text-3xl font-bold text-white">Existing tools weren't built for India</h2>
+          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Why FIREpath</p>
+          <h2 className="text-3xl font-bold text-white">Your complete FIRE picture</h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {problems.map(p => (
-            <div key={p.tool} className="rounded-xl p-5 border border-white/8 bg-white/3">
-              <div className="font-semibold text-white mb-2">{p.tool}</div>
-              <p className="text-sm text-white/50 leading-relaxed">{p.issue}</p>
+        <div className="grid md:grid-cols-3 gap-6">
+          {pillars.map(p => (
+            <div key={p.title} className="rounded-xl p-6 border border-white/8 bg-white/3">
+              <div className="text-3xl mb-4">{p.icon}</div>
+              <div className="font-semibold text-white mb-2 text-lg">{p.title}</div>
+              <p className="text-sm text-white/55 leading-relaxed">{p.desc}</p>
             </div>
           ))}
         </div>
@@ -322,8 +321,8 @@ export default function Landing() {
                 FIRE<span className="text-orange-500">path</span>
               </div>
               <div className="text-sm text-white/40 max-w-xs">
-                India-first FIRE planning. Built for the people who actually understand
-                what EPF lock-in means.
+                FIREpath was built for Indians serious about financial independence.
+                We model every rupee with the rules that actually apply to it.
               </div>
             </div>
             <div className="flex gap-12 text-sm text-white/50">
@@ -342,7 +341,7 @@ export default function Landing() {
           </div>
           <div className="border-t border-white/8 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-white/30">
             <span>© 2026 FIREpath. All rights reserved.</span>
-            <span>FIREpath is a financial literacy tool. Not SEBI-registered investment advice.</span>
+            <span>FIREpath is a financial education tool. Not SEBI-registered investment advice. Consult a SEBI-registered advisor before making financial decisions.</span>
           </div>
         </div>
       </footer>
