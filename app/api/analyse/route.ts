@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { aiProvider } from "@/lib/ai-provider";
+import { projectedFireAge, fireCorpusTarget } from "@/lib/fire-calculator";
 
-const CURRENT_PROMPT_VERSION = 2;
+const CURRENT_PROMPT_VERSION = 3;
 
 const SYSTEM_PROMPT = `
 You are a financial education assistant specialising in Indian personal finance and FIRE planning.
@@ -46,13 +47,29 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Projected FIRE age more than 4 years behind target: additional -8
    Start from 100 and subtract. A portfolio 4 years behind FIRE target must not score above 72.
 
-5. concerns must always include:
+5. CASH SURPLUS HANDLING:
+   If monthly cash surplus > ₹10,000:
+   - This MUST appear as the TOP action_item with priority "high"
+   - The action must be specific to their surplus amount and projected FIRE acceleration
+   - Format: "Invest your ₹X/month cash surplus to FIRE Y years earlier"
+   - The impact field must reference the projected wealth from surplus alone
+   - Example impact: "Adds ₹X Cr to your corpus by age N, moving FIRE from age N to age M"
+   - Also mention in concerns if surplus rate > 15% of income
+
+   If monthly cash surplus <= ₹10,000:
+   - Mention in strengths: "Fully allocating income — no idle cash"
+
+6. CASH SURPLUS IN HEADLINE:
+   If surplus > ₹20,000/month, the headline MUST mention it.
+   Example: "₹40K/month sitting idle could accelerate your FIRE date by 3 years"
+
+7. concerns must always include:
    - If gold exceeds 10% of portfolio: flag it explicitly with the actual percentage
    - If NPS lock-in gap is more than 10 years after retirement: flag the bridge period
    - If projected FIRE age exceeds target: flag the specific gap in years
    - If LIC endowment present: flag poor returns (~4-5% vs equity alternatives)
 
-6. allocation_commentary must reference the actual calculated percentages from the user data.
+8. allocation_commentary must reference the actual calculated percentages from the user data.
    Never use approximate or made-up percentages. Use the exact equity_pct, debt_pct, gold_pct, cash_pct provided.
 
 Return exactly this JSON structure, nothing else:
@@ -217,6 +234,46 @@ export async function POST(_req: Request) {
   const ppfYearsToMaturity =
     ppf?.notes?.match(/(\d+)\s*(?:years?|yr)/i)?.[1] ?? "N/A";
 
+  // Cash flow / surplus analysis
+  const totalMonthlyInvestments = holdingsList
+    .filter((h: any) => h.notes !== "estimated")
+    .reduce((s: number, h: any) => s + (h.monthly_contribution || 0), 0);
+
+  const monthlySurplus = Math.max(
+    (fullProfile.monthly_income || 0) - (fullProfile.monthly_expense || 0) - totalMonthlyInvestments,
+    0,
+  );
+  const surplusRate = fullProfile.monthly_income > 0
+    ? (monthlySurplus / fullProfile.monthly_income) * 100
+    : 0;
+
+  const yearsToRetirement = (fullProfile.fire_target_age || 45) - (fullProfile.age || 30);
+  const inflationRate = (fullProfile.inflation_rate ?? 7) / 100;
+  const currentLiquidCorpus = snap.total_corpus || 0;
+  const fireTargetCorpus = fireCorpusTarget(
+    fullProfile.fire_monthly_expense || fullProfile.monthly_expense || 0,
+    yearsToRetirement,
+    inflationRate,
+  );
+
+  let surplusProjected = 0;
+  if (monthlySurplus > 0) {
+    const annualSurplus = monthlySurplus * 12;
+    let corpus = 0;
+    for (let y = 0; y < yearsToRetirement; y++) {
+      corpus = (corpus + annualSurplus) * 1.12;
+    }
+    surplusProjected = corpus;
+  }
+
+  const currentFireAge = projectedFireAge(
+    fullProfile.age || 30, currentLiquidCorpus, totalMonthlyInvestments, fireTargetCorpus, 0.12,
+  );
+  const acceleratedFireAge = projectedFireAge(
+    fullProfile.age || 30, currentLiquidCorpus, totalMonthlyInvestments + monthlySurplus, fireTargetCorpus, 0.12,
+  );
+  const yearsSaved = Math.max(currentFireAge - acceleratedFireAge, 0);
+
   const userDataString = `
 USER PORTFOLIO DATA:
 Age: ${fullProfile.age}
@@ -227,6 +284,15 @@ Post-retirement monthly expense target: ₹${fullProfile.fire_monthly_expense}
 Tax bracket: ${fullProfile.tax_bracket}%
 Tax regime: ${fullProfile.tax_regime}
 Risk score: ${fullProfile.risk_score}/10
+
+CASH FLOW ANALYSIS:
+Monthly income: ₹${fullProfile.monthly_income}
+Monthly expenses: ₹${fullProfile.monthly_expense}
+Monthly investments (tracked, excl. estimated): ₹${totalMonthlyInvestments}
+Monthly cash surplus (unallocated): ₹${monthlySurplus}
+Surplus rate: ${surplusRate.toFixed(1)}% of income sitting idle
+If surplus invested at 12% CAGR: grows to ₹${Math.round(surplusProjected)} by age ${fullProfile.fire_target_age}
+Investing surplus would accelerate FIRE by: ${yearsSaved} year(s) (from age ${currentFireAge} to age ${acceleratedFireAge})
 
 CALCULATED BY DASHBOARD (treat these as ground truth):
 Projected FIRE age: ${projectedFireAge}

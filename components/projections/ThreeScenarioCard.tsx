@@ -17,12 +17,6 @@ interface Props {
   yearByYear: ThreeScenario[];
 }
 
-function crFmt(v: number) {
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  return `₹${Math.round(v / 1000)}K`;
-}
-
 export default function ThreeScenarioCard({
   title, subtitle, conservative, base, optimistic,
   currentValue, contributions, yearByYear,
@@ -80,7 +74,7 @@ export default function ThreeScenarioCard({
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="age" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} tickLine={false} axisLine={false} />
             <YAxis
-              tickFormatter={crFmt}
+              tickFormatter={formatINR}
               tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
               tickLine={false} axisLine={false}
               width={52}
@@ -92,7 +86,7 @@ export default function ThreeScenarioCard({
                 borderRadius: "12px",
                 color: "var(--text-primary)",
               }}
-              formatter={(v: number, name: string) => [crFmt(v), name]}
+              formatter={(v: number, name: string) => [formatINR(v), name]}
               labelFormatter={l => `Age ${l}`}
             />
             <Legend

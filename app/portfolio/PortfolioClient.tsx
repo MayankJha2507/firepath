@@ -103,7 +103,7 @@ function buildInitialEditState(profile: Profile, holdings: DBHolding[]): EditSta
   const physical     = holdings.find(h => h.category === "gold" && h.name.toLowerCase().includes("physical"));
   const goldEtf      = holdings.find(h => h.category === "gold" && !h.name.toLowerCase().includes("physical"));
   const fdH          = holdings.find(h => h.category === "fd");
-  const epfH         = holdings.find(h => h.category === "epf");
+  const epfH         = holdings.find(h => h.category === "epf" && h.notes !== "estimated");
   const npsH         = holdings.find(h => h.category === "nps");
   const ppfH         = holdings.find(h => h.category === "ppf");
   const licH         = holdings.find(h => h.category === "lic");
@@ -206,16 +206,22 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function LockedCard({ title, present, rows }: {
+function LockedCard({ title, present, estimated, rows }: {
   title: string;
   present: boolean;
+  estimated?: boolean;
   rows: { label: string; value: string; accent?: boolean }[];
 }) {
   return (
-    <div className="rounded-xl p-4" style={{ border: "1px solid var(--border)", background: present ? "var(--bg-card)" : "var(--bg-secondary)" }}>
+    <div className="rounded-xl p-4" style={{ border: "1px solid var(--border)", background: present && !estimated ? "var(--bg-card)" : "var(--bg-secondary)" }}>
       <div className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
         {title}
         {!present && <span className="text-xs font-normal" style={{ color: "var(--text-secondary)" }}>Not added</span>}
+        {present && estimated && (
+          <span className="text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: "rgba(251,191,36,0.15)", color: "var(--warning)" }}>
+            Estimated
+          </span>
+        )}
       </div>
       {present && (
         <div className="space-y-2">
@@ -225,6 +231,11 @@ function LockedCard({ title, present, rows }: {
               <span className={row.accent ? "font-semibold text-orange-500" : ""} style={row.accent ? {} : { color: "var(--text-primary)" }}>{row.value}</span>
             </div>
           ))}
+          {estimated && (
+            <p className="text-xs pt-1" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border)" }}>
+              Based on your years working — add exact EPF details for accuracy.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -1054,7 +1065,7 @@ function ViewMode({ profile, holdings, activeTab }: {
   const goldPhysical  = holdings.find(h => h.category === "gold" && h.name.toLowerCase().includes("physical"));
   const goldEtf       = holdings.find(h => h.category === "gold" && !h.name.toLowerCase().includes("physical"));
   const fd            = holdings.find(h => h.category === "fd");
-  const epfH          = holdings.find(h => h.category === "epf");
+  const epfH          = holdings.find(h => h.category === "epf" && h.notes !== "estimated");
   const npsH          = holdings.find(h => h.category === "nps");
   const ppfH          = holdings.find(h => h.category === "ppf");
   const licH          = holdings.find(h => h.category === "lic");
@@ -1092,7 +1103,7 @@ function ViewMode({ profile, holdings, activeTab }: {
           <StatCard label="Target retirement age"  value={`${profile.fire_target_age ?? "—"} years`} />
           <StatCard label="Monthly income"         value={profile.monthly_income  ? formatINR(profile.monthly_income)  : "—"} />
           <StatCard label="Monthly expense"        value={profile.monthly_expense ? formatINR(profile.monthly_expense) : "—"} />
-          <StatCard label="Parent support/mo"      value={profile.parent_support  ? formatINR(profile.parent_support)  : "—"} />
+          <StatCard label="Monthly savings"          value={profile.parent_support  ? formatINR(profile.parent_support)  : "—"} />
           <StatCard label="Tax regime"             value={profile.tax_regime === "new" ? "New regime" : "Old regime"} />
           <StatCard label="Risk score"             value={profile.risk_score ? `${profile.risk_score} / 10` : "—"} />
           <StatCard label="Post-retirement expense" value={profile.fire_monthly_expense ? `${formatINR(profile.fire_monthly_expense)}/mo` : "—"} />
@@ -1155,7 +1166,7 @@ function ViewMode({ profile, holdings, activeTab }: {
         <div className="card">
           <SectionTitle>Locked investments</SectionTitle>
           <div className="grid sm:grid-cols-2 gap-4">
-            <LockedCard title="EPF" present={!!epfH} rows={[
+            <LockedCard title="EPF" present={!!epfH} estimated={epfH?.notes === 'estimated'} rows={[
               { label: "Current value",                                     value: epfH ? formatINR(epfH.value_inr) : "—" },
               { label: "Your contribution / mo",                            value: epfYour > 0 ? formatINR(epfYour) : "—" },
               { label: "Employer contribution / mo",                        value: epfEmployer > 0 ? formatINR(epfEmployer) : "—" },
@@ -1282,7 +1293,7 @@ function EditView({ state, setState, activeTab }: {
           <Field label="Target retirement age"><EditInput value={state.profile.fire_target_age} onChange={v => setProfile({ fire_target_age: v })} type="number" placeholder="45" /></Field>
           <Field label="Monthly income (₹)"><EditInput value={state.profile.monthly_income} onChange={v => setProfile({ monthly_income: v })} type="number" placeholder="200000" /></Field>
           <Field label="Monthly expense (₹)"><EditInput value={state.profile.monthly_expense} onChange={v => setProfile({ monthly_expense: v })} type="number" placeholder="100000" /></Field>
-          <Field label="Parent support / mo (₹)"><EditInput value={state.profile.parent_support} onChange={v => setProfile({ parent_support: v })} type="number" placeholder="0" /></Field>
+          <Field label="Monthly savings (₹)"><EditInput value={state.profile.parent_support} onChange={v => setProfile({ parent_support: v })} type="number" placeholder="0" /></Field>
           <Field label="Tax bracket (%)">
             <EditSelect value={state.profile.tax_bracket} onChange={v => setProfile({ tax_bracket: v })}
               options={[{ value: "5", label: "5%" }, { value: "10", label: "10%" }, { value: "15", label: "15%" }, { value: "20", label: "20%" }, { value: "30", label: "30%" }]} />

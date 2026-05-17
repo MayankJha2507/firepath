@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { formatINR } from "@/lib/fire-calculator";
 
 interface Props {
   liquidNow: number;
@@ -12,11 +13,6 @@ interface Props {
   lockedAtRetirement: number;
 }
 
-function crFmt(v: number) {
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  return `₹${Math.round(v / 1000)}K`;
-}
 
 export default function CorpusBarChart({ liquidNow, lockedNow, liquidAtRetirement, lockedAtRetirement }: Props) {
   const data = [
@@ -29,9 +25,9 @@ export default function CorpusBarChart({ liquidNow, lockedNow, liquidAtRetiremen
       <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barCategoryGap="35%">
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={crFmt} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} width={52} />
+        <YAxis tickFormatter={formatINR} tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} width={52} />
         <Tooltip
-          formatter={(v: number, name: string) => [crFmt(v), name]}
+          formatter={(v: number, name: string) => [formatINR(v), name]}
           contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />

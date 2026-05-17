@@ -18,7 +18,7 @@ export interface Profile {
   fire_target_age: number | null;
   monthly_income: number | null;
   monthly_expense: number | null;
-  parent_support: number | null;
+  parent_support: number | null; // stored as "monthly_savings" in UI
   tax_bracket: number;
   tax_regime: "new" | "old";
   fire_monthly_expense: number | null;

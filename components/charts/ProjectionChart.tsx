@@ -4,6 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceLine, ResponsiveContainer,
 } from "recharts";
+import { formatINR } from "@/lib/fire-calculator";
 
 interface DataPoint {
   year: number;
@@ -18,11 +19,6 @@ interface Props {
   fireAge?: number;
 }
 
-function crFmt(v: number) {
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  return `₹${Math.round(v / 1000)}K`;
-}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -39,7 +35,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {payload.map((p: any) => (
         <div key={p.name} className="flex justify-between gap-4">
           <span style={{ color: p.color }}>{p.name}</span>
-          <span style={{ fontWeight: 500 }}>{crFmt(p.value)}</span>
+          <span style={{ fontWeight: 500 }}>{formatINR(p.value)}</span>
         </div>
       ))}
     </div>
@@ -67,7 +63,7 @@ export default function ProjectionChart({ data, fireAge }: Props) {
           tickLine={false} axisLine={false}
         />
         <YAxis
-          tickFormatter={crFmt}
+          tickFormatter={formatINR}
           tick={{ fontSize: 11, fill: "var(--text-secondary)" }}
           tickLine={false} axisLine={false}
           width={56}

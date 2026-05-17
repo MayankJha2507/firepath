@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   formatINR, milestoneProjections,
-  fireCorpusTarget, inflationAdjustedExpense,
+  fireCorpusTarget,
   equityProjection, epfProjection, ppfProjection, npsProjection,
   fireBridgeAnalysis,
+  calculateFireVariants, yearsToFireFromSavingsRate, generateYearByYearTable,
+  calculateSavingsRate, projectedFireAge as projectedFireAgeFn,
+  projectCorpusAt,
 } from "@/lib/fire-calculator";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -16,6 +19,9 @@ import DataQualityBadge, { computeCompleteness } from "@/components/ui/DataQuali
 import type { DataQuality } from "@/components/ui/DataQualityBadge";
 import FireStatusBanner, { type BannerState } from "@/components/ui/FireStatusBanner";
 import { CorpusBreakdownPopover } from "@/components/ui/CorpusBreakdownPopover";
+import DashboardHeroSections from "@/components/dashboard/DashboardHeroSections";
+import SwpSection from "@/components/dashboard/SwpSection";
+import { calculateSWP } from "@/lib/swp-calculator";
 
 const DEV_PROFILE = {
   id: "dev", full_name: "Dev User", age: 30, fire_target_age: 45,
@@ -126,10 +132,21 @@ export default async function Dashboard() {
   const yearsToFire = Math.max(1, (profile.fire_target_age || 45) - (profile.age || 30));
   const monthlyInvest = holdings.reduce((s: number, h: any) => s + (h.monthly_contribution || 0), 0);
 
-  const inflAdj = inflationAdjustedExpense(profile.fire_monthly_expense || profile.monthly_expense || 60000, yearsToFire);
-  const fireTarget = fireCorpusTarget(inflAdj);
+  // Only count holdings the user explicitly added (not quickstart placeholders)
+  const SYNTHETIC_NOTES = ["estimated", "user-provided"];
+  const realHoldingsCount = holdings.filter((h: any) => !SYNTHETIC_NOTES.includes(h.notes)).length;
+  const hasRealHoldings = realHoldingsCount > 0;
+  const userAddedCategories = new Set(
+    holdings.filter((h: any) => !SYNTHETIC_NOTES.includes(h.notes)).map((h: any) => h.category as string)
+  );
+  const EXPECTED_CATEGORIES = ["indian_stock", "us_stock", "mf", "gold", "epf", "nps", "ppf"];
+  const missingCategories = EXPECTED_CATEGORIES.filter(c => !userAddedCategories.has(c));
 
-  const epfHolding = holdings.find((h: any) => h.category === "epf");
+  const inflationRate = (profile.inflation_rate ?? 7) / 100;
+  const fireMonthlyExpense = profile.fire_monthly_expense || profile.monthly_expense || 60000;
+  const fireTarget = fireCorpusTarget(fireMonthlyExpense, yearsToFire, inflationRate);
+
+  const epfHolding = holdings.find((h: any) => h.category === "epf" && h.notes !== "estimated");
   const ppfHolding = holdings.find((h: any) => h.category === "ppf");
   const npsHolding = holdings.find((h: any) => h.category === "nps");
   const lockedAtRetirement =
@@ -143,14 +160,8 @@ export default async function Dashboard() {
     ? (profile.fire_target_age - snap.projected_fire_age) * 12
     : null;
 
-  // FIRE status banner
-  const projAge = snap.projected_fire_age ?? (profile.age || 30) + yearsToFire;
+  // FIRE status banner — wired after projFireAge is derived from table (below)
   const targetAge = profile.fire_target_age || 45;
-  const diffYears = targetAge - projAge; // positive = early, negative = behind
-  let bannerState: BannerState;
-  if (diffYears >= 0) bannerState = "on_track";
-  else if (diffYears >= -2) bannerState = "close";
-  else bannerState = "needs_work";
 
   const bridge = fireBridgeAnalysis(liquidAtRetirement, fireTarget);
   let additionalSipNeeded = 0;
@@ -168,6 +179,71 @@ export default async function Dashboard() {
   // Nudge items: only show sections that are missing
   const missingNudges = NUDGE_ITEMS.filter(item => dc[item.key] === "missing");
   const allComplete = completenessRaw && Object.values(dc).every(v => v === "exact");
+
+  // ─── new hero section calculations ───────────────────────────────────────
+  const monthlyIncome = profile.monthly_income || 0;
+  const annualIncome = monthlyIncome * 12;
+  const annualExpenses = (profile.monthly_expense || 0) * 12;
+  const savingsRatePct = calculateSavingsRate(monthlyIncome, monthlyInvest);
+
+  const yearByYearTableData = generateYearByYearTable(
+    profile.age || 30,
+    snap.total_corpus || 0,
+    monthlyIncome,
+    profile.monthly_expense || 0,
+    monthlyInvest,
+    fireTarget,
+    fireMonthlyExpense,
+    0.12,
+    inflationRate,
+  );
+
+  // Single source of truth — all touchpoints use this age
+  const fireRow = yearByYearTableData.find(r => r.isFireYear);
+  const projFireAge = fireRow?.age ?? (profile.age || 30) + 50;
+
+  const diffYears = targetAge - projFireAge;
+  let bannerState: BannerState;
+  if (diffYears >= 0) bannerState = "on_track";
+  else if (diffYears >= -2) bannerState = "close";
+  else bannerState = "needs_work";
+
+  // Surplus — how much income is unallocated after expenses + investments
+  const monthlySurplus = Math.max(monthlyIncome - (profile.monthly_expense || 0) - monthlyInvest, 0);
+  const accelFireAge = monthlySurplus > 0
+    ? projectedFireAgeFn(profile.age || 30, snap.total_corpus || 0, monthlyInvest + monthlySurplus, fireTarget, 0.12)
+    : projFireAge;
+  const yearsSavedBySurplus = Math.max(projFireAge - accelFireAge, 0);
+
+  const fireVariants = calculateFireVariants(
+    fireMonthlyExpense,
+    profile.age || 30,
+    profile.fire_target_age || 45,
+    snap.total_corpus || 0,
+    monthlyInvest,
+    inflationRate,
+  );
+
+  const savingsRateChartData = Array.from({ length: 18 }, (_, i) => {
+    const rate = (i + 1) * 5;
+    return {
+      rate,
+      years: yearsToFireFromSavingsRate(rate, snap.liquid_corpus || 0, monthlyIncome, fireTarget, 0.12),
+    };
+  }).filter(d => d.years <= 50);
+
+  // Project corpus at the actual FIRE age (not today's corpus)
+  const yearsToFireAge = Math.max(0, projFireAge - (profile.age || 30));
+  const corpusAtFireAge = projectCorpusAt(snap.total_corpus || 0, monthlyInvest, yearsToFireAge, 0.12);
+
+  const swpResult = calculateSWP(
+    corpusAtFireAge,
+    fireMonthlyExpense,
+    projFireAge,
+    profile.age || 30,
+    inflationRate,
+    0.08,
+  );
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
@@ -190,22 +266,98 @@ export default async function Dashboard() {
           {/* FIRE status banner */}
           <FireStatusBanner
             state={bannerState}
-            projectedFireAge={Math.round(projAge)}
+            projectedFireAge={projFireAge}
             targetFireAge={targetAge}
             diffYears={diffYears}
             additionalSipNeeded={Math.round(additionalSipNeeded)}
+            monthlySurplus={monthlySurplus}
+            acceleratedFireAge={accelFireAge}
+            yearsSavedIfSurplusInvested={yearsSavedBySurplus}
           />
 
-          {/* Estimated data banner */}
-          {isEstimated && (
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-              <p className="text-sm text-amber-800">
-                <strong>Projections are estimated</strong> — based on your selected ranges.{" "}
-                <Link href="/portfolio" className="underline hover:no-underline font-medium">
-                  Add exact holdings →
-                </Link>
+          {/* Always-visible sections: savings rate, FIRE variants, savings rate chart, year-by-year */}
+          <DashboardHeroSections
+            savingsRate={savingsRatePct}
+            currentLiquidCorpus={snap.liquid_corpus || 0}
+            monthlyIncome={monthlyIncome}
+            monthlyExpense={profile.monthly_expense || 0}
+            monthlyInvest={monthlyInvest}
+            fireTarget={fireTarget}
+            fireTargetAge={profile.fire_target_age || 45}
+            currentAge={profile.age || 30}
+            projectedFireAge={projFireAge}
+            fireVariants={fireVariants}
+            savingsRateChartData={savingsRateChartData}
+            yearByYearTableData={yearByYearTableData}
+            inflationRate={inflationRate}
+          />
+
+          {/* Capture prompt — shown when user has no real holdings */}
+          {!hasRealHoldings && (
+            <div className="bg-gradient-to-br from-[var(--orange)]/5 to-[var(--accent)]/5 border border-[var(--orange)]/20 rounded-2xl p-8 mb-4 text-center">
+              <div className="text-3xl mb-3">📊</div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
+                Unlock your real numbers
+              </h3>
+              <p className="text-sm mb-6 max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>
+                Your FIRE date, corpus projection, withdrawal plan, and AI analysis
+                are all waiting. Add your actual holdings to see the real picture
+                instead of estimates.
               </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg mx-auto mb-6 text-xs">
+                {[
+                  { icon: "💰", label: "Real corpus & FIRE target" },
+                  { icon: "📈", label: "Year-by-year projection" },
+                  { icon: "🎯", label: "Exact milestones" },
+                  { icon: "💸", label: "Withdrawal plan (SWP)" },
+                  { icon: "🥧", label: "Asset allocation" },
+                  { icon: "🤖", label: "AI portfolio analysis" },
+                ].map(item => (
+                  <div
+                    key={item.label}
+                    className="rounded-lg p-2.5 flex items-center gap-2 justify-center sm:justify-start"
+                    style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
+                  >
+                    <span>{item.icon}</span>
+                    <span className="text-left">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                <Link
+                  href="/projections"
+                  className="flex-1 px-5 py-3 rounded-xl text-sm font-medium text-white text-center transition-opacity hover:opacity-90"
+                  style={{ background: "var(--orange)" }}
+                >
+                  Add via Projections →
+                </Link>
+                <Link
+                  href="/portfolio"
+                  className="flex-1 px-5 py-3 rounded-xl text-sm font-medium text-center transition-colors hover:opacity-80"
+                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                >
+                  Full Portfolio editor
+                </Link>
+              </div>
+              <p className="text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
+                Takes 2 minutes · Paste from your broker statement
+              </p>
+            </div>
+          )}
+
+          {/* Holdings-gated sections */}
+          {hasRealHoldings && <>
+
+          {/* Partial completion nudge */}
+          {missingCategories.length > 0 && (
+            <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+              <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Your numbers are based on {realHoldingsCount} added {realHoldingsCount === 1 ? "asset" : "assets"}.
+                Add {missingCategories.length} more for complete accuracy.
+              </div>
+              <Link href="/projections" className="text-xs whitespace-nowrap ml-3 hover:opacity-80" style={{ color: "var(--orange)" }}>
+                Add more →
+              </Link>
             </div>
           )}
 
@@ -272,7 +424,7 @@ export default async function Dashboard() {
             yearsWindow={Math.min(yearsToFire + 10, 35)}
             fireTarget={fireTarget}
             startAge={profile.age || 30}
-            projectedFireAge={snap.projected_fire_age ?? null}
+            projectedFireAge={projFireAge}
             corpusQuality={corpusQuality}
             showQuality={!!completenessRaw}
           />
@@ -297,9 +449,16 @@ export default async function Dashboard() {
             </div>
             <div className="card flex flex-col items-center justify-center text-center">
               <div className="section-title mb-3">Savings rate</div>
-              <SavingsGauge pct={snap.savings_rate || 0} />
+              <SavingsGauge pct={savingsRatePct} />
             </div>
           </div>
+
+          {/* SWP — withdrawal phase: retirement age → corpus exhaustion */}
+          <SwpSection
+            swp={swpResult}
+            fireMonthlyExpenseToday={fireMonthlyExpense}
+            inflationRate={inflationRate}
+          />
 
           {/* Improve accuracy nudge cards */}
           {missingNudges.length > 0 && (
@@ -334,6 +493,8 @@ export default async function Dashboard() {
               </p>
             </div>
           )}
+
+          </>} {/* end hasRealHoldings */}
 
           {/* Row 5 — AI analysis preview */}
           <AIPreviewCard isPro={isPro} latestAnalysis={latestAnalysis} />

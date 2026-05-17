@@ -4,8 +4,48 @@ export function inflationAdjustedExpense(monthly: number, years: number, rate = 
   return monthly * Math.pow(1 + rate, years);
 }
 
-export function fireCorpusTarget(inflationAdjMonthly: number): number {
-  return inflationAdjMonthly * 12 * 25 * 1.2;
+export function fireCorpusTarget(
+  monthlyExpenseToday: number,
+  yearsToRetirement: number,
+  inflationRate: number
+): number {
+  const inflated = monthlyExpenseToday * Math.pow(1 + inflationRate, yearsToRetirement);
+  return inflated * 12 * 25;
+}
+
+export function calculateSavingsRate(monthlyIncome: number, totalMonthlyInvestments: number): number {
+  if (monthlyIncome <= 0) return 0;
+  return Math.min((totalMonthlyInvestments / monthlyIncome) * 100, 100);
+}
+
+export function projectedFireAge(
+  currentAge: number,
+  currentLiquidCorpus: number,
+  totalMonthlyInvestments: number,
+  fireTarget: number,
+  equityRate: number
+): number {
+  let corpus = currentLiquidCorpus;
+  const annualInvestment = totalMonthlyInvestments * 12;
+  for (let y = 0; y <= 50; y++) {
+    if (corpus >= fireTarget) return currentAge + y;
+    corpus = (corpus + annualInvestment) * (1 + equityRate);
+  }
+  return currentAge + 50;
+}
+
+export function projectCorpusAt(
+  currentLiquid: number,
+  monthlySIP: number,
+  years: number,
+  equityRate = 0.12
+): number {
+  let corpus = currentLiquid;
+  const annualSIP = monthlySIP * 12;
+  for (let y = 0; y < years; y++) {
+    corpus = (corpus + annualSIP) * (1 + equityRate);
+  }
+  return corpus;
 }
 
 // Future value of annuity (monthly compounding annual rate)
@@ -54,10 +94,6 @@ export function equityProjection(
   return fvLump(current, years, rate) + fvAnnuity(monthlySIP, years, rate);
 }
 
-export function savingsRate(monthlyInvestment: number, monthlyIncome: number): number {
-  if (monthlyIncome <= 0) return 0;
-  return Math.min(100, Math.max(0, (monthlyInvestment / monthlyIncome) * 100));
-}
 
 const EQUITY_CATS = new Set(["indian_stock", "us_stock", "mf"]);
 const DEBT_CATS = new Set(["epf", "nps", "ppf", "lic"]);
@@ -127,12 +163,17 @@ export function yearByYearProjection(
   return out;
 }
 
-export function formatINR(n: number): string {
-  if (!isFinite(n)) return "—";
-  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
-  if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
-  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+export function formatINR(amount: number): string {
+  if (!isFinite(amount) || isNaN(amount)) return "₹0";
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  if (abs >= 1e7) return `${sign}₹${(abs / 1e7).toFixed(2)}Cr`;
+  if (abs >= 1e5) return `${sign}₹${(abs / 1e5).toFixed(2)}L`;
+  if (abs >= 1e3) return `${sign}₹${(abs / 1e3).toFixed(1)}K`;
+  return `${sign}₹${Math.round(abs)}`;
 }
+
+export const formatCurrency = formatINR;
 
 // ─── detailed breakdown types ─────────────────────────────────────────────
 
@@ -349,4 +390,156 @@ export function goldBreakdown(
     growthMultiple: currentValue > 0 ? balance / currentValue : 0,
     yearByYear,
   };
+}
+
+// ─── savings rate / networthify functions ─────────────────────────────────
+
+export function yearsToFireFromSavingsRate(
+  savingsRatePct: number,
+  currentLiquidCorpus: number,
+  monthlyIncome: number,
+  fireTarget: number,
+  equityRate = 0.12
+): number {
+  const annualInvestment = (monthlyIncome * savingsRatePct / 100) * 12;
+  let corpus = currentLiquidCorpus;
+  for (let y = 0; y <= 50; y++) {
+    if (corpus >= fireTarget) return y;
+    corpus = (corpus + annualInvestment) * (1 + equityRate);
+  }
+  return 50;
+}
+
+export interface FireVariant {
+  type: "Lean FIRE" | "FIRE" | "FAT FIRE";
+  monthlyAmountToday: number;
+  monthlyAmountAtRetirement: number;
+  corpusNeeded: number;
+  projectedCorpusAtTargetAge: number;
+  achievableByTargetAge: boolean;
+  surplusOrGap: number;
+  isCurrentTarget: boolean;
+  color: string;
+}
+
+export function calculateFireVariants(
+  monthlyExpenseToday: number,
+  currentAge: number,
+  fireTargetAge: number,
+  currentLiquidCorpus: number,
+  monthlySIP: number,
+  inflationRate = 0.07,
+  equityRate = 0.12
+): FireVariant[] {
+  const yearsToRetirement = Math.max(1, fireTargetAge - currentAge);
+  const inflationMultiplier = Math.pow(1 + inflationRate, yearsToRetirement);
+
+  // Project corpus at target age — constant across all variants
+  let projectedCorpus = currentLiquidCorpus;
+  const annualSIP = monthlySIP * 12;
+  for (let y = 0; y < yearsToRetirement; y++) {
+    projectedCorpus = (projectedCorpus + annualSIP) * (1 + equityRate);
+  }
+
+  const LIFESTYLE_MULTIPLIERS = {
+    "Lean FIRE": 0.6,
+    "FIRE": 1.0,
+    "FAT FIRE": 2.0,
+  } as const;
+
+  const VARIANT_COLORS = {
+    "Lean FIRE": "#9CA3AF",
+    "FIRE": "#F97316",
+    "FAT FIRE": "#7C5FF5",
+  } as const;
+
+  const base = (["Lean FIRE", "FIRE", "FAT FIRE"] as const).map(type => {
+    const multiplier = LIFESTYLE_MULTIPLIERS[type];
+    const monthlyToday = monthlyExpenseToday * multiplier;
+    const monthlyAtRetirement = monthlyToday * inflationMultiplier;
+    const corpusNeeded = monthlyAtRetirement * 12 * 25;
+    return {
+      type,
+      monthlyAmountToday: monthlyToday,
+      monthlyAmountAtRetirement: monthlyAtRetirement,
+      corpusNeeded,
+      isCurrentTarget: type === "FIRE",
+      color: VARIANT_COLORS[type],
+    };
+  });
+
+  return base.map(v => ({
+    ...v,
+    projectedCorpusAtTargetAge: projectedCorpus,
+    achievableByTargetAge: projectedCorpus >= v.corpusNeeded,
+    surplusOrGap: projectedCorpus - v.corpusNeeded,
+  }));
+}
+
+export interface YearByYearRow {
+  year: number;
+  age: number;
+  annualIncome: number;
+  annualExpenses: number;
+  annualInvestment: number;
+  portfolioROI: number;
+  roiCoversPct: number;
+  netWorthChange: number;
+  netWorth: number;
+  isFireYear: boolean;
+  fireAnnualNeed: number;
+}
+
+export function generateYearByYearTable(
+  currentAge: number,
+  currentLiquidCorpus: number,
+  monthlyIncome: number,
+  monthlyExpenseToday: number,
+  monthlyInvestment: number,
+  fireTarget: number,
+  fireMonthlyExpenseToday: number,
+  equityRate = 0.12,
+  inflationRate = 0.07,
+  incomeGrowthRate = 0.08
+): YearByYearRow[] {
+  const rows: YearByYearRow[] = [];
+  let netWorth = currentLiquidCorpus;
+  let annualIncome = monthlyIncome * 12;
+  let annualExpenses = monthlyExpenseToday * 12;
+  let annualInvestment = monthlyInvestment * 12;
+  let fireAchievedYear: number | null = null;
+
+  // Fixed annual need at retirement — same target the banner uses
+  const fireAnnualNeed = fireTarget * 0.04;
+
+  for (let year = 0; year <= 40; year++) {
+    const roi = netWorth * equityRate;
+    // Progress = what % of fireTarget corpus have we reached?
+    const roiCoversPct = fireTarget > 0 ? (netWorth / fireTarget) * 100 : 0;
+    const isFireYear = roiCoversPct >= 100 && fireAchievedYear === null;
+    if (isFireYear) fireAchievedYear = year;
+
+    const netWorthChange = year === 0 ? 0 : annualInvestment + roi;
+
+    rows.push({
+      year, age: currentAge + year,
+      annualIncome, annualExpenses, annualInvestment,
+      portfolioROI: roi,
+      roiCoversPct,
+      netWorthChange,
+      netWorth,
+      isFireYear,
+      fireAnnualNeed,
+    });
+
+    if (year > 0) netWorth = Math.max(netWorth + annualInvestment + roi, 0);
+
+    annualIncome *= (1 + incomeGrowthRate);
+    annualExpenses *= (1 + inflationRate);
+    annualInvestment *= (1 + incomeGrowthRate);
+
+    if (fireAchievedYear !== null && year >= fireAchievedYear + 3) break;
+  }
+
+  return rows;
 }
