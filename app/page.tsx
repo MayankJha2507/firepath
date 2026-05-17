@@ -173,41 +173,94 @@ export default function Landing() {
               </div>
             </div>
             {/* Dashboard preview */}
-            <div className="p-6" style={{ background: "#F8F8FC" }}>
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                {MOCK_CARDS.map(card => (
-                  <div key={card.label} className="rounded-lg p-3" style={{ background: "white", border: "1px solid #E2E2EE" }}>
-                    <div className="text-xs mb-1" style={{ color: "#6B6B8A" }}>{card.label}</div>
-                    <div className={`text-lg font-semibold ${card.highlight ? "text-green-600" : ""}`} style={card.highlight ? {} : { color: "#1A1A2E" }}>
-                      {card.value}
-                    </div>
-                    <div className="text-xs" style={{ color: "#9B9BB8" }}>{card.sub}</div>
-                  </div>
-                ))}
+            <div className="p-5 space-y-3" style={{ background: "#F8F8FC" }}>
+
+              {/* Greeting */}
+              <div className="text-left">
+                <div className="font-semibold text-sm" style={{ color: "#1A1A2E" }}>Hey there 👋</div>
+                <div className="text-xs" style={{ color: "#9B9BB8" }}>Sunday, 17 May</div>
               </div>
-              <div className="rounded-lg p-4" style={{ background: "white", border: "1px solid #E2E2EE" }}>
-                <div className="text-xs mb-3" style={{ color: "#9B9BB8" }}>CORPUS PROJECTION</div>
-                <div className="flex items-end gap-1 h-20">
-                  {[15, 20, 28, 35, 45, 58, 72, 88, 100, 88].map((h, i) => (
+
+              {/* Retirement banner */}
+              <div className="rounded-lg p-3 text-left" style={{ background: "#FFF1F0", border: "1px solid #FECACA" }}>
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">📉</span>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold" style={{ color: "#991B1B" }}>Projected retirement at 54 — 12 years behind</div>
+                    <div className="text-xs mt-0.5" style={{ color: "#B45309" }}>Your top lever: increase monthly SIP by ₹4.27L to close the gap significantly.</div>
+                    <div className="text-xs mt-1" style={{ color: "#6B6B8A" }}>💡 ₹40.0K/mo sitting idle — investing it moves FIRE to <span style={{ color: "#F97316" }}>age 53</span> (1 yr earlier) <span style={{ color: "#F97316", cursor: "pointer" }}>Invest surplus →</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Savings rate + FIRE targets row */}
+              <div className="grid grid-cols-5 gap-3">
+                {/* Savings rate card */}
+                <div className="col-span-2 rounded-lg p-3 text-left" style={{ background: "white", border: "1px solid #E2E2EE" }}>
+                  <div className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: "#9B9BB8" }}>Your savings rate</div>
+                  <div className="text-2xl font-bold" style={{ color: "#F97316" }}>30.0%</div>
+                  <div className="text-xs mb-2" style={{ color: "#6B6B8A" }}>of income invested</div>
+                  <div className="text-xs font-medium" style={{ color: "#16A34A" }}>⚡ Good — above average</div>
+                  {/* Progress bar */}
+                  <div className="mt-2 h-1.5 rounded-full" style={{ background: "#F4F4F8" }}>
+                    <div className="h-1.5 rounded-full" style={{ width: "30%", background: "#F97316" }} />
+                  </div>
+                  <div className="flex justify-between text-xs mt-1" style={{ color: "#9B9BB8" }}>
+                    <span>0%</span><span>50%</span><span>100%</span>
+                  </div>
+                </div>
+
+                {/* FIRE targets */}
+                <div className="col-span-3 rounded-lg p-3 text-left" style={{ background: "white", border: "1px solid #E2E2EE" }}>
+                  <div className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: "#9B9BB8" }}>Your FIRE targets</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Lean FIRE", amount: "₹7.08Cr", color: "#6B6B8A", border: "#E2E2EE", bg: "white" },
+                      { label: "FIRE", amount: "₹11.80Cr", color: "#F97316", border: "rgba(249,115,22,0.4)", bg: "#FFF7ED", tag: "your target" },
+                      { label: "FAT FIRE", amount: "₹23.61Cr", color: "#6B6B8A", border: "#E2E2EE", bg: "white" },
+                    ].map(t => (
+                      <div key={t.label} className="rounded-md p-2 relative" style={{ background: t.bg, border: `1px solid ${t.border}` }}>
+                        {t.tag && (
+                          <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                            <span className="text-white text-xs px-1.5 py-0.5 rounded-full" style={{ background: "#F97316", fontSize: "9px" }}>{t.tag}</span>
+                          </div>
+                        )}
+                        <div className="text-xs" style={{ color: "#9B9BB8" }}>{t.label}</div>
+                        <div className="text-sm font-bold mt-0.5" style={{ color: t.color }}>{t.amount}</div>
+                        <div className="text-xs" style={{ color: "#9B9BB8" }}>at age 42</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs" style={{ color: "#9B9BB8" }}>Projected corpus at 42: ₹2.04Cr · Gap: ₹9.77Cr</div>
+                </div>
+              </div>
+
+              {/* Savings rate bar chart */}
+              <div className="rounded-lg p-3 text-left" style={{ background: "white", border: "1px solid #E2E2EE" }}>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xs font-medium uppercase tracking-wide" style={{ color: "#9B9BB8" }}>Savings rate vs years to retirement</div>
+                  <div className="text-xs" style={{ color: "#9B9BB8" }}>You are at 30%</div>
+                </div>
+                <div className="flex items-end gap-1.5" style={{ height: "48px" }}>
+                  {[
+                    { h: 95, active: false }, { h: 85, active: false }, { h: 75, active: false },
+                    { h: 65, active: false }, { h: 55, active: false }, { h: 45, active: true },
+                    { h: 28, active: false }, { h: 22, active: false }, { h: 18, active: false },
+                    { h: 14, active: false }, { h: 11, active: false },
+                  ].map((b, i) => (
                     <div key={i} className="flex-1 flex flex-col justify-end">
-                      <div
-                        className="rounded-sm"
-                        style={{
-                          height: `${h}%`,
-                          background: i < 7
-                            ? "linear-gradient(to top, #F97316, #FDBA74)"
-                            : "rgba(249,115,22,0.15)",
-                        }}
-                      />
+                      <div className="rounded-sm" style={{
+                        height: `${b.h}%`,
+                        background: b.active ? "#F97316" : (i < 5 ? "#6366F1" : "#E2E2EE"),
+                      }} />
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between text-xs mt-2" style={{ color: "#9B9BB8" }}>
-                  <span>Age 32</span>
-                  <span>🔥 FIRE at 41</span>
-                  <span>Age 55</span>
+                <div className="flex justify-between text-xs mt-1" style={{ color: "#9B9BB8" }}>
+                  <span>5%</span><span>30%</span><span>80%</span>
                 </div>
               </div>
+
             </div>
           </div>
           {/* Subtle glow */}
