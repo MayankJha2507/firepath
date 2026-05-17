@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { formatINR } from "@/lib/fire-calculator";
 import HistoryLineChart from "@/components/charts/HistoryLineChart";
 import FireAgeChart from "@/components/charts/FireAgeChart";
 import SavingsRateChart from "@/components/charts/SavingsRateChart";
 import SideNav from "@/components/layout/SideNav";
+
+const SYNTHETIC_NOTES = ["estimated", "user-provided"];
 
 const DEV_SNAPS = [
   { id: "1", snapshot_date: "2024-09-01", total_corpus: 4200000, liquid_corpus: 2800000, locked_corpus: 1400000, savings_rate: 35, projected_fire_age: 46 },
@@ -24,6 +27,7 @@ export default async function History() {
   let tier = "pro";
   let snaps: any[] = [];
   let milestones: any[] = [];
+  let hasRealHoldings = false;
 
   if (user) {
     const { data: p } = await supabase.from("profiles").select("tier").eq("id", user.id).single();
@@ -36,9 +40,18 @@ export default async function History() {
       .eq("user_id", user.id).order("achieved_at", { ascending: true });
     snaps = s || [];
     milestones = m || [];
+
+    // Check latest snapshot for real holdings
+    const latestSnap = snaps[snaps.length - 1];
+    if (latestSnap) {
+      const { data: holdings } = await supabase
+        .from("holdings").select("notes").eq("snapshot_id", latestSnap.id);
+      hasRealHoldings = (holdings || []).some(h => !SYNTHETIC_NOTES.includes(h.notes || ""));
+    }
   } else {
     snaps = DEV_SNAPS;
     milestones = DEV_MILESTONES;
+    hasRealHoldings = true;
   }
 
   const isPro = tier === "pro";
@@ -65,6 +78,17 @@ export default async function History() {
       <main className="lg:ml-[220px] pt-14">
         <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Progress history</h1>
+
+          {!hasRealHoldings ? (
+            <div className="card text-center py-14">
+              <div className="text-4xl mb-4">📈</div>
+              <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Nothing to track yet</h2>
+              <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
+                Add your actual holdings — EPF, stocks, mutual funds, and more — and your progress history will appear here as you take monthly snapshots.
+              </p>
+              <Link href="/portfolio" className="btn-primary px-8">Add portfolio details →</Link>
+            </div>
+          ) : (<>
 
           {!isPro && (
             <div className="card text-center py-10">
@@ -158,6 +182,8 @@ export default async function History() {
               )}
             </div>
           </div>
+
+          </>)}
 
           <p className="disclaimer pb-4">For educational purposes only. Not SEBI-registered investment advice.</p>
         </div>

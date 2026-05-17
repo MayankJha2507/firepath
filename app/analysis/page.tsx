@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import SideNav from "@/components/layout/SideNav";
 import AnalysisClient from "./AnalysisClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const bypassProGate = process.env.BYPASS_PRO_GATE === "true";
+const SYNTHETIC_NOTES = ["estimated", "user-provided"];
 
 export default async function Analysis() {
   const supabase = createClient();
@@ -19,9 +21,10 @@ export default async function Analysis() {
 
   const isUnlocked = tier === "pro" || bypassProGate;
 
-  // Fetch latest snapshot so AnalysisClient can show correct states
+  // Check if user has real (non-synthetic) holdings
+  let hasRealHoldings = false;
   let latestSnapshot: { id: string; snapshot_date: string } | null = null;
-  if (user && isUnlocked) {
+  if (user) {
     const { data: snap } = await supabase
       .from("portfolio_snapshots")
       .select("id, snapshot_date")
@@ -30,6 +33,13 @@ export default async function Analysis() {
       .limit(1)
       .maybeSingle();
     latestSnapshot = snap;
+    if (snap) {
+      const { data: holdings } = await supabase
+        .from("holdings")
+        .select("notes")
+        .eq("snapshot_id", snap.id);
+      hasRealHoldings = (holdings || []).some(h => !SYNTHETIC_NOTES.includes(h.notes || ""));
+    }
   }
 
   return (
@@ -40,7 +50,16 @@ export default async function Analysis() {
           <h1 className="text-2xl font-semibold mb-6" style={{ color: "var(--text-primary)" }}>AI Analysis</h1>
 
           <ErrorBoundary>
-            {!isUnlocked ? (
+            {!hasRealHoldings ? (
+              <div className="card text-center py-14">
+                <div className="text-4xl mb-4">📋</div>
+                <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Add your portfolio first</h2>
+                <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
+                  AI analysis needs your actual holdings — EPF, stocks, mutual funds, and more — to give you meaningful insights.
+                </p>
+                <Link href="/portfolio" className="btn-primary px-8">Add portfolio details →</Link>
+              </div>
+            ) : !isUnlocked ? (
               <div className="card text-center py-14">
                 <div className="text-4xl mb-4">🤖</div>
                 <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>AI analysis is a Pro feature</h2>
