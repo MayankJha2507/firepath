@@ -5,6 +5,31 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatINR } from "@/lib/fire-calculator";
 
+const ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+function belowThousand(n: number): string {
+  if (n === 0) return "";
+  if (n < 20) return ONES[n];
+  if (n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? " " + ONES[n % 10] : "");
+  return ONES[Math.floor(n / 100)] + " hundred" + (n % 100 ? " " + belowThousand(n % 100) : "");
+}
+
+function toIndianWords(n: number): string {
+  if (!n || n <= 0) return "";
+  const parts: string[] = [];
+  const crore = Math.floor(n / 1e7);
+  const lakh = Math.floor((n % 1e7) / 1e5);
+  const thousand = Math.floor((n % 1e5) / 1e3);
+  const rest = n % 1e3;
+  if (crore) parts.push(belowThousand(crore) + " crore");
+  if (lakh) parts.push(belowThousand(lakh) + " lakh");
+  if (thousand) parts.push(belowThousand(thousand) + " thousand");
+  if (rest) parts.push(belowThousand(rest));
+  return parts.join(" ");
+}
+
 function CalculatingScreen() {
   return (
     <div className="min-h-screen bg-[#080E1C] flex items-center justify-center px-4">
@@ -70,6 +95,11 @@ function NumberField({
             }}
             className="w-full pl-8 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder:text-white/20 focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
+          {value > 0 && (
+            <div className="mt-1.5 text-xs capitalize" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {toIndianWords(value)}
+            </div>
+          )}
         </div>
         {footer}
       </label>
@@ -263,7 +293,7 @@ export default function Onboarding() {
               return (
                 <div className={`mt-3 flex items-center justify-between rounded-xl px-4 py-3 border ${bg}`}>
                   <div>
-                    <div className="text-[11px] uppercase tracking-wider text-white/40">Monthly savings</div>
+                    <div className="text-[11px] uppercase tracking-wider text-white/40">Cash surplus</div>
                     <div className={`text-lg font-semibold ${color}`}>
                       {positive ? formatINR(surplus) : `-${formatINR(Math.abs(surplus))}`}
                     </div>
