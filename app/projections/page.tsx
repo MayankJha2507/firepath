@@ -51,7 +51,7 @@ export default async function ProjectionsPage() {
               Investment Projections
             </h1>
             <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-              What you put in vs what you get back
+              Projections based on your actual holdings · Add more on the Portfolio page
             </p>
           </div>
           <ProjectionsClient profile={profile} holdings={holdings} />

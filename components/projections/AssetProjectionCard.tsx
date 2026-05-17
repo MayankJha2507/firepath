@@ -26,11 +26,6 @@ interface Props {
   children?: React.ReactNode;
 }
 
-function crFmt(v: number) {
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  return `₹${Math.round(v / 1000)}K`;
-}
 
 export default function AssetProjectionCard({
   title, subtitle, valueAtRetirement, currentValue, growthMultiple,
@@ -112,7 +107,7 @@ export default function AssetProjectionCard({
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="age" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tickFormatter={crFmt} tick={{ fill: "var(--text-secondary)", fontSize: 11 }} tickLine={false} axisLine={false} width={52} />
+            <YAxis tickFormatter={formatINR} tick={{ fill: "var(--text-secondary)", fontSize: 11 }} tickLine={false} axisLine={false} width={52} />
             <Tooltip
               contentStyle={{
                 background: "var(--bg-card)",
@@ -120,7 +115,7 @@ export default function AssetProjectionCard({
                 borderRadius: "12px",
                 color: "var(--text-primary)",
               }}
-              formatter={(v: number) => [crFmt(v), "Balance"]}
+              formatter={(v: number) => [formatINR(v), "Balance"]}
               labelFormatter={l => `Age ${l}`}
             />
             <Area

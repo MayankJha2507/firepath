@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  assetAllocation, equityProjection, epfProjection, ppfProjection,
-  inflationAdjustedExpense, fireCorpusTarget, savingsRate,
+  assetAllocation, equityProjection, fireCorpusTarget, calculateSavingsRate,
 } from "@/lib/fire-calculator";
 import type { Holding } from "@/lib/types";
 
@@ -28,21 +27,22 @@ export async function POST(req: Request) {
   const monthlySIP = holdings.reduce((s, h) => s + (h.monthly_contribution || 0), 0)
     + (body.monthly_us_investment || 0) + (body.monthly_indian_investment || 0);
 
-  const sRate = savingsRate(monthlySIP, profile.monthly_income || 0);
+  const sRate = calculateSavingsRate(profile.monthly_income || 0, monthlySIP);
 
   // Crude FIRE-age projection: years to reach corpus target via equity returns.
   const yearsToFire = profile.fire_target_age && profile.age
     ? Math.max(1, profile.fire_target_age - profile.age)
     : 20;
-  const inflAdj = inflationAdjustedExpense(profile.fire_monthly_expense || profile.monthly_expense || 0, yearsToFire);
-  const target = fireCorpusTarget(inflAdj);
+  const fireMonthly = profile.fire_monthly_expense || profile.monthly_expense || 0;
+  const inflRate = (profile.inflation_rate ?? 7) / 100;
+  const target = fireCorpusTarget(fireMonthly, yearsToFire, inflRate);
   const projectedAt = equityProjection(liquidCorpus, monthlySIP, yearsToFire);
 
   // Find years where projection hits target (search up to age 70).
   let projectedFireAge = profile.fire_target_age || 60;
   if (profile.age) {
     for (let y = 1; y <= 70 - profile.age; y++) {
-      if (equityProjection(liquidCorpus, monthlySIP, y) >= fireCorpusTarget(inflationAdjustedExpense(profile.fire_monthly_expense || profile.monthly_expense || 0, y))) {
+      if (equityProjection(liquidCorpus, monthlySIP, y) >= fireCorpusTarget(fireMonthly, y, inflRate)) {
         projectedFireAge = profile.age + y;
         break;
       }

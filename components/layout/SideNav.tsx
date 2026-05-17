@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatINR, fireCorpusTarget, inflationAdjustedExpense } from "@/lib/fire-calculator";
+import { formatINR, fireCorpusTarget } from "@/lib/fire-calculator";
 import AvatarMenu from "@/components/ui/AvatarMenu";
 
 // ─── nav structure ────────────────────────────────────────────────────────
@@ -263,7 +263,7 @@ export default function SideNav() {
           .maybeSingle(),
         supabase
           .from("profiles")
-          .select("age, fire_target_age, fire_monthly_expense, monthly_expense, data_completeness, full_name")
+          .select("age, fire_target_age, fire_monthly_expense, monthly_expense, data_completeness, full_name, inflation_rate")
           .eq("id", user.id)
           .single(),
       ]);
@@ -273,17 +273,15 @@ export default function SideNav() {
         let corpusResult: CorpusData | null = null;
         if (snap && profile) {
           const yearsToFire = Math.max(1, (profile.fire_target_age || 45) - (profile.age || 30));
-          const inflAdj = inflationAdjustedExpense(
-            profile.fire_monthly_expense || profile.monthly_expense || 60000,
-            yearsToFire
-          );
+          const fireMonthly = profile.fire_monthly_expense || profile.monthly_expense || 60000;
+          const inflRate = ((profile as any).inflation_rate ?? 7) / 100;
           const dc: Record<string, string> = profile.data_completeness || {};
           const keys = Object.keys(dc);
           const exactCount = keys.filter(k => dc[k] === "exact").length;
           corpusResult = {
             total: snap.total_corpus,
             fireAge: snap.projected_fire_age ?? null,
-            fireTarget: fireCorpusTarget(inflAdj),
+            fireTarget: fireCorpusTarget(fireMonthly, yearsToFire, inflRate),
             age: profile.age || 30,
             completeness: keys.length > 0 ? Math.round((exactCount / keys.length) * 100) : null,
             missingSections: keys.filter(k => dc[k] !== "exact").length,

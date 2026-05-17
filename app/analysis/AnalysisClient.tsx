@@ -284,8 +284,17 @@ export default function AnalysisClient({ latestSnapshot }: Props) {
         <div className="space-y-2.5">
           {analysis.action_items.map((a, i) => {
             const pc = PRIORITY_CONFIG[a.priority];
+            const isSurplus = a.action.toLowerCase().includes("surplus") ||
+              a.action.toLowerCase().includes("idle cash");
             return (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+              <div
+                key={i}
+                className="flex items-start gap-3 p-3 rounded-xl"
+                style={{
+                  background: isSurplus ? "rgba(251,191,36,0.06)" : "var(--bg-secondary)",
+                  border: isSurplus ? "1px solid rgba(251,191,36,0.25)" : "1px solid var(--border)",
+                }}
+              >
                 <span className="text-base mt-0.5 flex-shrink-0">{pc.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -293,6 +302,18 @@ export default function AnalysisClient({ latestSnapshot }: Props) {
                     <span className={pc.cls}>{pc.label}</span>
                   </div>
                   <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{a.impact}</p>
+                  {isSurplus && (
+                    <Link
+                      href="/portfolio"
+                      className="inline-flex items-center gap-1 text-xs mt-2 hover:opacity-80"
+                      style={{ color: "var(--orange)" }}
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add new SIP to invest your surplus
+                    </Link>
+                  )}
                 </div>
               </div>
             );
