@@ -103,32 +103,39 @@ const MOCK_CARDS = [
 
 export default function Landing() {
   return (
-    <div className="bg-[#080E1C] min-h-screen text-white">
+    <div className="min-h-screen" style={{ background: "#FAFAFA", color: "#1A1A2E" }}>
 
       {/* ── Nav ────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md border-b border-white/8" style={{ background: "rgba(8,14,28,0.85)" }}>
+      <nav
+        className="sticky top-0 z-50 backdrop-blur-md"
+        style={{ background: "rgba(255,255,255,0.90)", borderBottom: "1px solid #E2E2EE" }}
+      >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="font-bold text-xl text-white">
+          <div className="font-bold text-xl" style={{ color: "#1A1A2E" }}>
             FIRE<span className="text-orange-500">path</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/auth" className="text-sm text-white/60 hover:text-white px-3 py-2 transition-colors">Sign in</Link>
-            <Link href="/auth" className="bg-orange-500 hover:opacity-90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">Get started</Link>
+            <Link href="/auth" className="text-sm px-3 py-2 transition-colors hover:opacity-70" style={{ color: "#6B6B8A" }}>
+              Sign in
+            </Link>
+            <Link href="/auth" className="bg-orange-500 hover:opacity-90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
+              Get started
+            </Link>
           </div>
         </div>
       </nav>
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-10 text-center">
-        <div className="inline-flex items-center gap-2 bg-orange-500/10 text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-500/20 mb-6">
+        <div className="inline-flex items-center gap-2 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-200 mb-6" style={{ background: "#FFF7ED" }}>
           🇮🇳 Built for Indian investors
         </div>
-        <h1 className="text-5xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight mb-6">
+        <h1 className="text-5xl md:text-6xl font-bold leading-[1.1] tracking-tight mb-6" style={{ color: "#1A1A2E" }}>
           Plan your financial independence —<br />
           <span className="text-orange-500">built for India.</span>
         </h1>
 
-        <p className="text-lg text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg mb-8 max-w-2xl mx-auto leading-relaxed" style={{ color: "#6B6B8A" }}>
           Track your FIRE journey across EPF, NPS, PPF, stocks, mutual funds, gold, and US holdings.
           See exactly when you&apos;ll retire, how much you need, and what&apos;s slowing you down.
           Updated every month.
@@ -140,56 +147,62 @@ export default function Landing() {
           </Link>
           <button
             onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-            className="border border-white/15 text-white/80 hover:text-white hover:border-white/30 text-base px-7 py-3 rounded-xl transition-all"
+            className="text-base px-7 py-3 rounded-xl transition-all hover:opacity-70"
+            style={{ border: "1px solid #E2E2EE", color: "#1A1A2E", background: "white" }}
           >
             See how it works ↓
           </button>
         </div>
-        <p className="text-xs text-white/30 mt-4">Takes 90 seconds · No credit card · Your data stays private</p>
+        <p className="text-xs mt-4" style={{ color: "#9B9BB8" }}>
+          Takes 90 seconds · No credit card · Your data stays private
+        </p>
 
         {/* ── Hero dashboard mockup ─────────────────────────────────── */}
         <div className="relative mx-auto max-w-4xl mt-14 px-4">
-          <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10" style={{ transform: "perspective(1000px) rotateX(2deg)" }}>
+          <div
+            className="rounded-xl overflow-hidden shadow-xl"
+            style={{ border: "1px solid #E2E2EE", transform: "perspective(1000px) rotateX(2deg)" }}
+          >
             {/* Browser chrome */}
-            <div className="bg-[#1E2D4A] px-4 py-3 flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
-              <div className="w-3 h-3 rounded-full bg-green-400/60" />
-              <div className="ml-4 flex-1 bg-white/5 rounded px-3 py-1 text-xs text-white/40">
+            <div className="px-4 py-3 flex items-center gap-2" style={{ background: "#F4F4F8" }}>
+              <div className="w-3 h-3 rounded-full bg-red-400/70" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400/70" />
+              <div className="w-3 h-3 rounded-full bg-green-400/70" />
+              <div className="ml-4 flex-1 rounded px-3 py-1 text-xs" style={{ background: "#E2E2EE", color: "#9B9BB8" }}>
                 app.firepath.in/dashboard
               </div>
             </div>
             {/* Dashboard preview */}
-            <div className="bg-[#0F1729] p-6">
+            <div className="p-6" style={{ background: "#F8F8FC" }}>
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {MOCK_CARDS.map(card => (
-                  <div key={card.label} className="bg-[#1E2D4A] rounded-lg p-3 border border-white/5">
-                    <div className="text-white/50 text-xs mb-1">{card.label}</div>
-                    <div className={`text-lg font-semibold ${card.highlight ? "text-green-400" : "text-white"}`}>
+                  <div key={card.label} className="rounded-lg p-3" style={{ background: "white", border: "1px solid #E2E2EE" }}>
+                    <div className="text-xs mb-1" style={{ color: "#6B6B8A" }}>{card.label}</div>
+                    <div className={`text-lg font-semibold ${card.highlight ? "text-green-600" : ""}`} style={card.highlight ? {} : { color: "#1A1A2E" }}>
                       {card.value}
                     </div>
-                    <div className="text-white/40 text-xs">{card.sub}</div>
+                    <div className="text-xs" style={{ color: "#9B9BB8" }}>{card.sub}</div>
                   </div>
                 ))}
               </div>
-              <div className="bg-[#1E2D4A] rounded-lg p-4 border border-white/5">
-                <div className="text-white/50 text-xs mb-3">CORPUS PROJECTION</div>
+              <div className="rounded-lg p-4" style={{ background: "white", border: "1px solid #E2E2EE" }}>
+                <div className="text-xs mb-3" style={{ color: "#9B9BB8" }}>CORPUS PROJECTION</div>
                 <div className="flex items-end gap-1 h-20">
                   {[15, 20, 28, 35, 45, 58, 72, 88, 100, 88].map((h, i) => (
                     <div key={i} className="flex-1 flex flex-col justify-end">
                       <div
-                        className="rounded-sm opacity-80"
+                        className="rounded-sm"
                         style={{
                           height: `${h}%`,
                           background: i < 7
                             ? "linear-gradient(to top, #F97316, #FDBA74)"
-                            : "rgba(249,115,22,0.2)",
+                            : "rgba(249,115,22,0.15)",
                         }}
                       />
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between text-white/30 text-xs mt-2">
+                <div className="flex justify-between text-xs mt-2" style={{ color: "#9B9BB8" }}>
                   <span>Age 32</span>
                   <span>🔥 FIRE at 41</span>
                   <span>Age 55</span>
@@ -197,15 +210,15 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          {/* Glow */}
-          <div className="absolute inset-0 -z-10 blur-3xl opacity-20 bg-orange-500 rounded-full" />
+          {/* Subtle glow */}
+          <div className="absolute inset-0 -z-10 blur-3xl opacity-10 bg-orange-400 rounded-full" />
         </div>
       </section>
 
       {/* ── Social proof bar ───────────────────────────────────────── */}
-      <div className="border-y border-white/8 py-6 my-12">
+      <div className="py-6 my-12" style={{ borderTop: "1px solid #E2E2EE", borderBottom: "1px solid #E2E2EE" }}>
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6 text-sm text-white/50">
+          <div className="flex items-center gap-6 text-sm" style={{ color: "#9B9BB8" }}>
             <span>🇮🇳 Built for Indian professionals</span>
             <span className="hidden sm:block">·</span>
             <span>NRIs with dual portfolios</span>
@@ -213,8 +226,8 @@ export default function Landing() {
             <span>Startup employees with ESOPs</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-yellow-400">★★★★★</span>
-            <span className="text-white/50 italic">&ldquo;Finally a FIRE tool that understands EPF lock-in&rdquo;</span>
+            <span className="text-yellow-500">★★★★★</span>
+            <span className="italic" style={{ color: "#6B6B8A" }}>&ldquo;Finally a FIRE tool that understands EPF lock-in&rdquo;</span>
           </div>
         </div>
       </div>
@@ -222,33 +235,33 @@ export default function Landing() {
       {/* ── Value pillars ──────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Why FIREpath</p>
-          <h2 className="text-3xl font-bold text-white">Your complete FIRE picture</h2>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#9B9BB8" }}>Why FIREpath</p>
+          <h2 className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>Your complete FIRE picture</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {pillars.map(p => (
-            <div key={p.title} className="rounded-xl p-6 border border-white/8 bg-white/3">
+            <div key={p.title} className="rounded-xl p-6" style={{ background: "white", border: "1px solid #E2E2EE" }}>
               <div className="text-3xl mb-4">{p.icon}</div>
-              <div className="font-semibold text-white mb-2 text-lg">{p.title}</div>
-              <p className="text-sm text-white/55 leading-relaxed">{p.desc}</p>
+              <div className="font-semibold mb-2 text-lg" style={{ color: "#1A1A2E" }}>{p.title}</div>
+              <p className="text-sm leading-relaxed" style={{ color: "#6B6B8A" }}>{p.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── Features ───────────────────────────────────────────────── */}
-      <section id="features" className="py-20 border-y border-white/8" style={{ background: "rgba(255,255,255,0.02)" }}>
+      <section id="features" className="py-20" style={{ background: "#F4F4F8", borderTop: "1px solid #E2E2EE", borderBottom: "1px solid #E2E2EE" }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-3xl font-bold text-white">Everything for your FIRE journey</h2>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#9B9BB8" }}>Features</p>
+            <h2 className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>Everything for your FIRE journey</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
             {features.map(f => (
-              <div key={f.title} className="rounded-xl p-5 border border-white/8 bg-white/3">
+              <div key={f.title} className="rounded-xl p-5" style={{ background: "white", border: "1px solid #E2E2EE" }}>
                 <div className="text-2xl mb-3">{f.icon}</div>
-                <div className="font-semibold text-white mb-1.5">{f.title}</div>
-                <p className="text-sm text-white/50 leading-relaxed">{f.desc}</p>
+                <div className="font-semibold mb-1.5" style={{ color: "#1A1A2E" }}>{f.title}</div>
+                <p className="text-sm leading-relaxed" style={{ color: "#6B6B8A" }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -258,18 +271,18 @@ export default function Landing() {
       {/* ── Pricing ────────────────────────────────────────────────── */}
       <section id="pricing" className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Pricing</p>
-          <h2 className="text-3xl font-bold text-white">Simple, transparent pricing</h2>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#9B9BB8" }}>Pricing</p>
+          <h2 className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>Simple, transparent pricing</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-5 items-start">
           {tiers.map(t => (
             <div
               key={t.name}
-              className="rounded-xl p-6 border relative"
+              className="rounded-xl p-6 relative"
               style={{
-                border: t.highlight ? "1px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                background: t.highlight ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.03)",
-                boxShadow: t.highlight ? "0 0 40px rgba(249,115,22,0.08)" : "none",
+                border: t.highlight ? "1px solid rgba(249,115,22,0.4)" : "1px solid #E2E2EE",
+                background: t.highlight ? "#FFF7ED" : "white",
+                boxShadow: t.highlight ? "0 0 32px rgba(249,115,22,0.08)" : "none",
               }}
             >
               {t.highlight && (
@@ -279,17 +292,17 @@ export default function Landing() {
                   </span>
                 </div>
               )}
-              <div className="font-semibold text-white mb-1">{t.name}</div>
+              <div className="font-semibold mb-1" style={{ color: "#1A1A2E" }}>{t.name}</div>
               <div className="flex items-end gap-1 mb-0.5">
-                <span className="text-3xl font-bold text-white">{t.price}</span>
-                <span className="text-white/40 text-sm mb-1">{t.period}</span>
+                <span className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>{t.price}</span>
+                <span className="text-sm mb-1" style={{ color: "#9B9BB8" }}>{t.period}</span>
               </div>
-              {t.usd && <div className="text-xs text-white/30 mb-3">{t.usd}</div>}
-              <p className="text-sm text-white/50 mb-5">{t.desc}</p>
+              {t.usd && <div className="text-xs mb-3" style={{ color: "#9B9BB8" }}>{t.usd}</div>}
+              <p className="text-sm mb-5" style={{ color: "#6B6B8A" }}>{t.desc}</p>
               <ul className="space-y-2 mb-6">
                 {t.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-white/70">
-                    <span className="text-green-400 mt-0.5 flex-shrink-0">✓</span>{f}
+                  <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "#1A1A2E" }}>
+                    <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>{f}
                   </li>
                 ))}
               </ul>
@@ -299,10 +312,9 @@ export default function Landing() {
                 <Link
                   href={t.href}
                   className={`block w-full text-center text-sm font-medium px-4 py-2.5 rounded-xl transition-all ${
-                    t.highlight
-                      ? "bg-orange-500 hover:opacity-90 text-white"
-                      : "border border-white/15 text-white/80 hover:text-white hover:border-white/30"
+                    t.highlight ? "bg-orange-500 hover:opacity-90 text-white" : "hover:opacity-70"
                   }`}
+                  style={t.highlight ? {} : { border: "1px solid #E2E2EE", color: "#1A1A2E" }}
                 >
                   {t.cta}
                 </Link>
@@ -313,33 +325,33 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/8 py-12 mt-4">
+      <footer className="py-12 mt-4" style={{ borderTop: "1px solid #E2E2EE" }}>
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8">
             <div>
-              <div className="text-lg font-semibold text-white mb-2">
+              <div className="text-lg font-semibold mb-2" style={{ color: "#1A1A2E" }}>
                 FIRE<span className="text-orange-500">path</span>
               </div>
-              <div className="text-sm text-white/40 max-w-xs">
+              <div className="text-sm max-w-xs" style={{ color: "#6B6B8A" }}>
                 FIREpath was built for Indians serious about financial independence.
                 We model every rupee with the rules that actually apply to it.
               </div>
             </div>
-            <div className="flex gap-12 text-sm text-white/50">
+            <div className="flex gap-12 text-sm" style={{ color: "#6B6B8A" }}>
               <div className="flex flex-col gap-2">
-                <span className="text-white/80 font-medium mb-1">Product</span>
-                <a href="/auth" className="hover:text-white transition-colors">Get started</a>
-                <a href="#features" className="hover:text-white transition-colors" onClick={e => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}>Features</a>
-                <a href="#pricing" className="hover:text-white transition-colors" onClick={e => { e.preventDefault(); document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }}>Pricing</a>
+                <span className="font-medium mb-1" style={{ color: "#1A1A2E" }}>Product</span>
+                <a href="/auth" className="hover:opacity-70 transition-opacity">Get started</a>
+                <a href="#features" className="hover:opacity-70 transition-opacity" onClick={e => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}>Features</a>
+                <a href="#pricing" className="hover:opacity-70 transition-opacity" onClick={e => { e.preventDefault(); document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }}>Pricing</a>
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-white/80 font-medium mb-1">Legal</span>
-                <Link href="/privacy" className="hover:text-white transition-colors">Privacy policy</Link>
-                <Link href="/terms" className="hover:text-white transition-colors">Terms of use</Link>
+                <span className="font-medium mb-1" style={{ color: "#1A1A2E" }}>Legal</span>
+                <Link href="/privacy" className="hover:opacity-70 transition-opacity">Privacy policy</Link>
+                <Link href="/terms" className="hover:opacity-70 transition-opacity">Terms of use</Link>
               </div>
             </div>
           </div>
-          <div className="border-t border-white/8 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-white/30">
+          <div className="mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs" style={{ borderTop: "1px solid #E2E2EE", color: "#9B9BB8" }}>
             <span>© 2026 FIREpath. All rights reserved.</span>
             <span>FIREpath is a financial education tool. Not SEBI-registered investment advice. Consult a SEBI-registered advisor before making financial decisions.</span>
           </div>
